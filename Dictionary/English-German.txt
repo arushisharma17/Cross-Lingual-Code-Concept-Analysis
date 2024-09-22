@@ -1,0 +1,10 @@
+I -> Ich: Probability = 1.00, Count = 1
+like -> mag: Probability = 1.00, Count = 1
+apples ->  ̈Apfel: Probability = 1.00, Count = 1
+She -> Sie: Probability = 0.67, Count = 2
+drives -> f ̈ahrt: Probability = 1.00, Count = 1
+a -> ein: Probability = 0.50, Count = 2
+car -> Auto: Probability = 1.00, Count = 1
+The -> Die: Probability = 1.00, Count = 1
+sun -> Sonne: Probability = 1.00, Count = 1
+is -> ist: Probability = 1.00, Count = 1
