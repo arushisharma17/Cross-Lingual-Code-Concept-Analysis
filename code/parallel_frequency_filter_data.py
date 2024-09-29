@@ -150,6 +150,11 @@ def main():
                             key_sentence_idx = int(key_sentence_idx)
                             key_token_idx = int(key_token_idx)
 
+                            print(tgt_word)
+                            print("--------------------")
+                            print(token)
+                            print("--------------------")
+
                             assert token == tgt_word
                             assert key_sentence_idx == sentence_idx
                             assert key_token_idx == tgt_idx
