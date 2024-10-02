@@ -3,9 +3,12 @@
 conda activate neurox_pip
 
 scriptDir="ConceptX/scripts/"   # path to ConceptX script directory
-inputPath="Data/English-German/"       # path to the directory where sentence files are saved
+# inputPath="Data/English-German/"       # path to the directory where sentence files are saved
+inputPath="Data/Java-CS/"       # path to the directory where sentence files are saved
 encoder_input="input.in"       # Encoder Sentences
 decoder_input="label.out"      # Decoder Sentences
+outputDir="activationsOutput_filtering/"    # Specify the output directory for the extractions
+mkdir -p $outputDir               # Create the output directory if it doesn't exist
 
 # model="bert-base-uncased"     # Model that we want to do the extraction for
 # model="google/mt5-base"     # Model that we want to do the extraction for
@@ -23,18 +26,18 @@ layer=0
 # Define the mapping for the filetering
 mapping="forward.align"
 
-encoder_working_file=$encoder_input.tok.sent_len
-decoder_working_file=$decoder_input.tok.sent_len
+encoder_working_file="${outputDir}/${encoder_input}.tok.sent_len"
+decoder_working_file="${outputDir}/${decoder_input}.tok.sent_len"
 
-cp ${inputPath}/$encoder_input $encoder_input.tok
-cp ${inputPath}/$decoder_input $decoder_input.tok
+cp ${inputPath}/$encoder_input ${outputDir}/$encoder_input.tok
+cp ${inputPath}/$decoder_input ${outputDir}/$decoder_input.tok
 
-python -u "parse_fastalign.py" --sentence-file "text.en-de" --alignment-file "forward.align" --output-file "mapping-dict.json"
+python -u "utils/mapping_fastalign.py" --sentence-file "large_en_de.text" --alignment-file "big_forward.align" --output-file "mapping-dict.json"
 
 mapping="mapping-dict.json"
 
 # Do sentence length filtering and keep sentences max length of {sentence_length}
-python "code/parallel_sentence_length.py" --encoder_input $encoder_input.tok --decoder_input $decoder_input.tok --encoder_output_file $encoder_working_file --decoder_output_file  $decoder_working_file --length ${sentence_length}
+python "code/parallel_sentence_length.py" --encoder_input ${outputDir}/$encoder_input.tok --decoder_input ${outputDir}/$decoder_input.tok --encoder_output_file $encoder_working_file --decoder_output_file  $decoder_working_file --length ${sentence_length}
 
 PYTHONPATH=$NEUROX_PATH python -u NeuroX/neurox/data/extraction/transformers_extractor.py "${model},${model},${model_class}" ${encoder_working_file}  ${decoder_working_file} activations.json --output_type json --seq2seq_component both --decompose_layers --filter_layers ${layer}
 
@@ -47,7 +50,10 @@ python -u "code/parallel_frequency_filter_data.py" --src-dataset ${encoder_worki
 
 
 # Extract vectors
-python -u ${scriptDir}/extract_data.py --input-file ${encoder_working_file}_min_${minfreq}_max_${maxfreq}_del_${delfreq}-dataset.json --output-vocab-file encoder-processed-vocab-filtered.npy --output-point-file encoder-processed-point-filtered.npy
+python -u ${scriptDir}/extract_data.py --input-file ${encoder_working_file}_min_${minfreq}_max_${maxfreq}_del_${delfreq}-dataset.json --output-vocab-file ${outputDir}/encoder-processed-vocab-filtered.npy --output-point-file ${outputDir}/encoder-processed-point-filtered.npy
 
-python -u ${scriptDir}/extract_data.py --input-file ${decoder_working_file}_min_${minfreq}_max_${maxfreq}_del_${delfreq}-dataset.json --output-vocab-file decoder-processed-vocab-filtered.npy --output-point-file decoder-processed-point-filtered.npy
+python -u ${scriptDir}/extract_data.py --input-file ${decoder_working_file}_min_${minfreq}_max_${maxfreq}_del_${delfreq}-dataset.json --output-vocab-file ${outputDir}/decoder-processed-vocab-filtered.npy --output-point-file ${outputDir}/decoder-processed-point-filtered.npy
 
+rm -r ${outputDir}/*-dataset.json
+rm -r ${outputDir}/*-labels.json
+rm -r *activations*.json
