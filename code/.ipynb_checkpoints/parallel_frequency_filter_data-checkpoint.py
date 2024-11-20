@@ -102,6 +102,7 @@ def main():
             tgt_word_counts[token] += 1
             sentence_idx = int(sentence_idx)
             token_idx = int(token_idx)
+            
             token_to_tgt_dataset[(sentence_idx, token_idx)] = dataset_idx
 
         print ("Constructing output datasets")
@@ -134,6 +135,8 @@ def main():
                             key_sentence_idx = int(key_sentence_idx)
                             key_token_idx = int(key_token_idx)
 
+                            # print(f"Token from dataset: {token}, Source word: {src_word}, Sentence index: {sentence_idx}, Token index: {src_idx}, {token_to_src_dataset[(sentence_idx, src_idx)]}")
+
                             assert token == src_word
                             assert key_sentence_idx == sentence_idx
                             assert key_token_idx == src_idx
@@ -150,6 +153,8 @@ def main():
                             key_sentence_idx = int(key_sentence_idx)
                             key_token_idx = int(key_token_idx)
 
+                            # print(f"Token from dataset: {token}, Source word: {tgt_word}, Sentence index: {sentence_idx}, Token index: {tgt_idx}, {token_to_tgt_dataset[(sentence_idx, tgt_idx)]}")
+
                             assert token == tgt_word
                             assert key_sentence_idx == sentence_idx
                             assert key_token_idx == tgt_idx
@@ -160,7 +165,7 @@ def main():
                                 activations
                             ])                        
                     else:
-                        print (f"Crossed max frequency {src_words}, {tgt_words}")
+                        # print (f"Crossed max frequency {src_words}, {tgt_words}")
                         maxskip += 1
                         maxskips.add((src_words, tgt_words))
 

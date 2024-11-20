@@ -1,4 +1,5 @@
 import sys
+import json
 
 # Check if the correct number of command line arguments is provided
 if len(sys.argv) != 8:
@@ -15,19 +16,38 @@ match_percentage = float(sys.argv[5])
 size_threshold = float(sys.argv[6])
 no_types = float(sys.argv[7])
 
-# Read and parse the dictionary file considering top N target phrases for each source phrase
+# # Read and parse the dictionary file considering top N target phrases for each source phrase
+# dictionary = {}
+# with open(dictionary_file_path, 'r') as dict_file:
+#     for line in dict_file:
+#         print(line)
+#         parts = line.strip().split('->')
+#         source_phrase = parts[0].strip()
+#         target_parts = parts[1].strip().split(': Probability = ')
+#         prob_and_count = target_parts[1].strip().split(', Count = ')
+#         target_phrase = target_parts[0].strip()
+#         probability = float(prob_and_count[0])
+#         count = int(prob_and_count[1])
+#         #print (source_phrase, target_phrase, probability, count)
+#         #input()
+#         # Consider only the top N target phrases for each source phrase
+#         if source_phrase in dictionary and len(dictionary[source_phrase]) < top_n_target_phrases:
+#             dictionary[source_phrase].append((target_phrase, probability))
+#         elif source_phrase not in dictionary:
+#             dictionary[source_phrase] = [(target_phrase, probability)]
+
 dictionary = {}
+
+# Load the JSON file
 with open(dictionary_file_path, 'r') as dict_file:
-    for line in dict_file:
-        parts = line.strip().split('->')
-        source_phrase = parts[0].strip()
-        target_parts = parts[1].strip().split(': Probability = ')
-        prob_and_count = target_parts[1].strip().split(', Count = ')
-        target_phrase = target_parts[0].strip()
-        probability = float(prob_and_count[0])
-        count = int(prob_and_count[1])
-        #print (source_phrase, target_phrase, probability, count)
-        #input()
+    data = json.load(dict_file)
+
+# Iterate through the loaded JSON data
+for source_phrase, targets in data.items():
+    for target_phrase, metrics in targets.items():
+        probability = metrics['Probability']
+        count = metrics['Count']
+
         # Consider only the top N target phrases for each source phrase
         if source_phrase in dictionary and len(dictionary[source_phrase]) < top_n_target_phrases:
             dictionary[source_phrase].append((target_phrase, probability))
@@ -74,14 +94,14 @@ for source_cluster_number, source_words in clusters1.items():
         for source_word in source_words:
             if source_word in dictionary:
                 for target_translation, translation_probability in dictionary[source_word]:
-                    if target_translation in target_words: #and translation_probability > 0.5:
+                    if target_translation in target_words and translation_probability > 0.5:
                         aligned_word_count += 1
                         match_tup = (source_word, target_translation)
                         match_list.append(match_tup)
                         break
         if aligned_word_count / total_words_in_source_cluster > match_percentage and len(clusters1[source_cluster_number]) > no_types and len(clusters1[source_cluster_number])/len(clusters2[target_cluster_number]) > size_threshold:
             aligned_clusters[source_cluster_number].add(target_cluster_number)
-            print (match_list)
+            print (set(match_list))
             print ("Source Cluster", source_cluster_number, "Target Cluster", target_cluster_number)
             print ("Source Cluster Size", len(clusters1[source_cluster_number]), "Target Cluster Size", len(clusters2[target_cluster_number]))
             print (aligned_word_count, total_words_in_source_cluster)
@@ -89,7 +109,6 @@ for source_cluster_number, source_words in clusters1.items():
 
 # Print aligned clusters
 print("Aligned Clusters:", len (aligned_clusters))
-print(aligned_clusters)
 for source_cluster, target_clusters in aligned_clusters.items():
     if target_clusters:
         print(f"Source Cluster {source_cluster} is aligned to Target Clusters: {', '.join(map(str, target_clusters))}")
