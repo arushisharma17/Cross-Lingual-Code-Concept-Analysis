@@ -1,5 +1,4 @@
 import argparse
-import json
 import os
 
 # Function to create the per-word level dictionary from input files
@@ -63,31 +62,35 @@ def create_word_level_dictionary(text_file_path, alignment_file_path, output_fil
                 count_dict[source_word] = 0
             count_dict[source_word] += 1
 
-    # Calculate probabilities and modify the dictionary content to include probabilities
+    # Calculate probabilities and prepare output
+    output_lines = []
     for source_word, targets in word_level_dictionary.items():
         for target_word, metrics in targets.items():
             probability = metrics['Count'] / count_dict[source_word]
-            metrics['Probability'] = round(probability, 2)
+            output_lines.append(f"{source_word} -> {target_word}: Probability = {probability:.2f}, Count = {metrics['Count']}")
 
-    # Output the word-level dictionary content to a JSON file
+    # Output the word-level dictionary content to a file
     with open(output_file_path, 'w') as dict_file:
-        json.dump(word_level_dictionary, dict_file, indent=4)
+        dict_file.write('\n'.join(output_lines) + '\n')
 
     print(f"{output_file_path} created successfully.")
 
 # Main function to parse command line arguments
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate a word-level dictionary from text and alignment files.')
-    parser.add_argument('text_file', type=str, help='Path to the text input file.')
-    parser.add_argument('alignment_file', type=str, help='Path to the alignment input file.')
-    parser.add_argument('--output_file', type=str, default=None, help='Path to the output dictionary json file. (Default: <text_file_directory>/dictionary.json')
+    parser.add_argument('text_file', type=str, help='Path to the text input file. A ||| delimited parallel corpus with proper tokenization.')
+    parser.add_argument('alignment_file', type=str, help='Path to the alignment input file with pharaoh (i-j) format.')
+    parser.add_argument('--output_file', type=str, default=None, help='Path to the output dictionary json file. (Default: <text_file_directory>/dictionary.txt')
 
     args = parser.parse_args()
 
     # Set default for output_file if not provided
     if args.output_file is None:
         text_file_dir = os.path.dirname(args.text_file)
-        args.output_file = os.path.join(text_file_dir, 'dictionary.json')
+        args.output_file = os.path.join(text_file_dir, 'dictionary.txt')
 
     # Call the function to create the word-level dictionary
     create_word_level_dictionary(args.text_file, args.alignment_file, args.output_file)
+
+
+

@@ -1,6 +1,7 @@
 import argparse
 import json
 from pathlib import Path
+import os
 
 def parse_sentences_and_alignments(sentence_file, alignment_file):
     mapping_dict = {}
@@ -35,11 +36,16 @@ def parse_sentences_and_alignments(sentence_file, alignment_file):
 
 def main():
     parser = argparse.ArgumentParser(description="Parse sentence alignments and sentences into mapping_dict format.")
-    parser.add_argument('--sentence-file', type=Path, required=True, help="Path to the sentence pairs file.")
-    parser.add_argument('--alignment-file', type=Path, required=True, help="Path to the Pharaoh alignments file.")
-    parser.add_argument('--output-file', type=Path, required=True, help="Path to save the output mapping_dict as JSON.")
+    parser.add_argument('sentence_file', type=Path, help="Path to the sentence pairs file.")
+    parser.add_argument('alignment_file', type=Path, help="Path to the Pharaoh alignments file.")
+    parser.add_argument('--output-file', type=Path, help="Path to save the output mapping_dict as JSON.")
 
     args = parser.parse_args()
+
+      # Set default for output_file if not provided
+    if args.output_file is None:
+        text_file_dir = os.path.dirname(args.sentence_file)
+        args.output_file = os.path.join(text_file_dir, 'mapping_dict.json')
 
     # Parse sentences and alignments
     mapping_dict = parse_sentences_and_alignments(args.sentence_file, args.alignment_file)
