@@ -5,3 +5,4 @@ trashcan/
 *__pycache__/
 *activationsOutput*/
 Experiments/
+.ipynb_checkpoints/
