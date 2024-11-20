@@ -65,3 +65,4 @@ dependencies:
     - transformers==4.6.1
     - typing-extensions==4.2.0
     - urllib3==1.26.9
+    - flask

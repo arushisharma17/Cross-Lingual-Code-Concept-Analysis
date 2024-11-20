@@ -1,0 +1,7 @@
+trashcan/
+*.conda/
+*.ipynb_checkpoints/
+*cache/
+*__pycache__/
+*activationsOutput*/
+Experiments/

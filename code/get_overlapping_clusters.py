@@ -89,29 +89,63 @@ def count_sentences_according_to_threshold(lst, sent_threshold):
     return lower_than_threshold, higher_than_threshold
 
 
-def get_overlapping_clusters(path_to_clusters, sentences_threshold, clusters_threshold):
+# def get_overlapping_clusters(path_to_clusters, sentences_threshold, clusters_threshold):
 
+#     cluster_to_words = get_words_to_sentence_ids_mapping(path_to_clusters)
+#     overlapping_clusters = []
+  
+#     for cluster in cluster_to_words:
+#         words_sentIDS = cluster_to_words[cluster]
+#         lower_than_threshold, higher_than_threshold = count_sentences_according_to_threshold(
+#             words_sentIDS, sentences_threshold)
+
+        
+        
+#         lower_than_threshold_perct = (
+#             lower_than_threshold / len(words_sentIDS)) * 100
+#         higher_than_threshold_perct = (
+#             higher_than_threshold / len(words_sentIDS)) * 100
+
+#         print(lower_than_threshold_perct)
+#         print(higher_than_threshold_perct)
+#         print()
+        
+#         if (lower_than_threshold_perct > clusters_threshold) and (higher_than_threshold_perct > clusters_threshold):
+#             overlapping_clusters.append(cluster)
+
+
+#     return overlapping_clusters
+
+
+def get_overlapping_clusters(path_to_clusters, sentences_threshold, clusters_threshold, unique_tokens):
     cluster_to_words = get_words_to_sentence_ids_mapping(path_to_clusters)
     overlapping_clusters = []
-  
+
     for cluster in cluster_to_words:
         words_sentIDS = cluster_to_words[cluster]
+        
+        # Check for unique tokens in the cluster
+        unique_words = set([word_sent[0] for word_sent in words_sentIDS])
+        if len(unique_words) < unique_tokens:
+            # Skip clusters that have fewer than 10 unique tokens
+            continue
+
         lower_than_threshold, higher_than_threshold = count_sentences_according_to_threshold(
             words_sentIDS, sentences_threshold)
+
         lower_than_threshold_perct = (
             lower_than_threshold / len(words_sentIDS)) * 100
         higher_than_threshold_perct = (
             higher_than_threshold / len(words_sentIDS)) * 100
+
+        print(lower_than_threshold_perct)
+        print(higher_than_threshold_perct)
+        print()
+
         if (lower_than_threshold_perct > clusters_threshold) and (higher_than_threshold_perct > clusters_threshold):
             overlapping_clusters.append(cluster)
 
-
     return overlapping_clusters
-
-
-
-
-
 
 
 def main(): 
@@ -121,11 +155,13 @@ def main():
     parser.add_argument("--output_path", help="Output path to store the overlapping clusters")
     parser.add_argument("--clusters_threshold", help="Threshold that we are considering for the overlap metric")
     parser.add_argument("--sentences_threshold", help="Threshold at which sentences are split into languages")
+    parser.add_argument("--unique_tokens", help="Minimal number of tokens should a cluster have")
     args = parser.parse_args()
 
-    threshold = args.sentences_threshold
+    threshold = int(args.sentences_threshold)
+    unique_tokens = int(args.unique_tokens)
 
-    overlapping_clusters = get_overlapping_clusters(args.cluster_file, threshold, float(args.clusters_threshold))
+    overlapping_clusters = get_overlapping_clusters(args.cluster_file, threshold, float(args.clusters_threshold), unique_tokens)
 
     
     
