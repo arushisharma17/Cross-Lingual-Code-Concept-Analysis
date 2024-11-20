@@ -11,6 +11,7 @@ Can also be invoked as a script as follows:
 
 import argparse
 import sys
+import os
 
 import numpy as np
 import transformers
@@ -20,7 +21,6 @@ from neurox.data.writer import ActivationsWriter
 
 from tqdm import tqdm
 from transformers import AutoModel, AutoTokenizer
-
 from transformers import RobertaTokenizer, T5ForConditionalGeneration
 
 
@@ -50,25 +50,35 @@ def get_model_and_tokenizer(model_desc, device="cpu", random_weights=False):
     tokenizer : transformers tokenizer
         An instance of one of the transformers.tokenization classes
     """
+
+    # NOTE: Contains a really shitty patch
     model_desc = model_desc.split(",")
     if len(model_desc) == 1:
         model_name = model_desc[0]
         tokenizer_name = model_desc[0]
         model = AutoModel.from_pretrained(model_name, output_hidden_states=True).to(device)
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        if model_name == 'Salesforce/codet5-base':
+            tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     elif len(model_desc) == 3:
         model_name = model_desc[0]
         tokenizer_name = model_desc[1]
         model_class_name = model_desc[2]
         model_class=getattr(transformers, model_class_name)
         model = model_class.from_pretrained(model_name, output_hidden_states=True).to(device)
-        # tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-        tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
+        if model_name == 'Salesforce/codet5-base':
+            tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     else:
         model_name = model_desc[0]
         tokenizer_name = model_desc[1]
         model = AutoModel.from_pretrained(model_name, output_hidden_states=True).to(device)
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        if model_name == 'Salesforce/codet5-base':
+            tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
 
     if random_weights:
         print("Randomizing weights")
@@ -283,24 +293,40 @@ def extract_sentence_representations(
         if seq2seq_component == "encoder":
             all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=True)
             encoder_input_ids = torch.tensor([all_ids["encoder"]]).to(device)
-
-            all_ids["decoder"] = tokenizer.encode("", truncation=True)
-            decoder_input_ids = torch.tensor([all_ids["decoder"]]).to(device)
-            model_outputs = model(
-                encoder_input_ids,
-                labels=decoder_input_ids,
-            )
-            hidden_states["encoder"] = model_outputs.encoder_hidden_states
+            model_outputs = model(encoder_input_ids)  # No 'labels' argument
+        
         elif seq2seq_component == "decoder" or seq2seq_component == "both":
             all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=True)
             encoder_input_ids = torch.tensor([all_ids["encoder"]]).to(device)
-
             all_ids["decoder"] = tokenizer.encode(decoder_sentence, truncation=True)
             decoder_input_ids = torch.tensor([all_ids["decoder"]]).to(device)
             model_outputs = model(
                 encoder_input_ids,
-                labels=decoder_input_ids,
+                decoder_input_ids=decoder_input_ids,  # Ensure to pass decoder_input_ids
             )
+        # if seq2seq_component == "encoder":
+        #     all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=True)
+        #     encoder_input_ids = torch.tensor([all_ids["encoder"]]).to(device)
+
+        #     all_ids["decoder"] = tokenizer.encode("", truncation=True)
+        #     decoder_input_ids = torch.tensor([all_ids["decoder"]]).to(device)
+        #     model_outputs = model(
+        #         encoder_input_ids,
+        #         labels=decoder_input_ids,
+        #     )
+        #     hidden_states["encoder"] = model_outputs.encoder_hidden_states
+        # elif seq2seq_component == "decoder" or seq2seq_component == "both":
+        #     all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=True)
+        #     encoder_input_ids = torch.tensor([all_ids["encoder"]]).to(device)
+
+        #     all_ids["decoder"] = tokenizer.encode(decoder_sentence, truncation=True)
+        #     decoder_input_ids = torch.tensor([all_ids["decoder"]]).to(device)
+        #     print('+'*80)
+        #     print(seq2seq_component
+        #     model_outputs = model(
+        #         encoder_input_ids,
+        #         labels=decoder_input_ids,
+        #     ))
             if seq2seq_component == "both":
                 hidden_states["encoder"] = model_outputs.encoder_hidden_states
             hidden_states["decoder"] = model_outputs.decoder_hidden_states
@@ -324,19 +350,19 @@ def extract_sentence_representations(
             hidden_states[key] = np.array(hidden_states[key], dtype=dtype)
 
     for key in all_keys:
-        print('(%s) Sentence         : "%s"' % (key, all_sentences[key]))
-        print(
-            "(%s) Original    (%03d): %s"
-            % (key, len(all_original_tokens[key]), all_original_tokens[key])
-        )
-        print(
-            "(%s) Tokenized   (%03d): %s"
-            % (
-                key,
-                len(tokenizer.convert_ids_to_tokens(all_ids[key])),
-                tokenizer.convert_ids_to_tokens(all_ids[key]),
-            )
-        )
+        # print('(%s) Sentence         : "%s"' % (key, all_sentences[key]))
+        # print(
+        #     "(%s) Original    (%03d): %s"
+        #     % (key, len(all_original_tokens[key]), all_original_tokens[key])
+        # )
+        # print(
+        #     "(%s) Tokenized   (%03d): %s"
+        #     % (
+        #         key,
+        #         len(tokenizer.convert_ids_to_tokens(all_ids[key])),
+        #         tokenizer.convert_ids_to_tokens(all_ids[key]),
+        #     )
+        # )
 
         assert key not in hidden_states or hidden_states[key].shape[1] == len(
             all_ids[key]
@@ -371,13 +397,13 @@ def extract_sentence_representations(
             special_token_ids = []
 
         assert all_hidden_states.shape[1] == len(filtered_ids)
-        print(
-            "Filtered   (%03d): %s"
-            % (
-                len(tokenizer.convert_ids_to_tokens(filtered_ids)),
-                tokenizer.convert_ids_to_tokens(filtered_ids),
-            )
-        )
+        # print(
+        #     "Filtered   (%03d): %s"
+        #     % (
+        #         len(tokenizer.convert_ids_to_tokens(filtered_ids)),
+        #         tokenizer.convert_ids_to_tokens(filtered_ids),
+        #     )
+        # )
 
         # Get actual tokens for filtered ids in order to do subword
         #  aggregation
@@ -494,20 +520,21 @@ def extract_sentence_representations(
                     last_special_token_pointer += 1
                 counter += 1
 
-        print(
-            "(%s) Detokenized (%03d): %s"
-            % (key, len(detokenized[key]), detokenized[key])
-        )
-        print("(%s) Counter: %d" % (key, counter))
+        # print(
+        #     "(%s) Detokenized (%03d): %s"
+        #     % (key, len(detokenized[key]), detokenized[key])
+        # )
+        # print("(%s) Counter: %d" % (key, counter))
 
         if inputs_truncated:
-            print("WARNING: Input truncated because of length, skipping check")
+            print(f"WARNING: Input truncated for key '{key}'.")
+            print(f"Original length: {len(original_tokens)}; Truncated to: {all_hidden_states.shape[1]}")
         else:
             assert counter == len(filtered_ids)
             assert len(detokenized[key]) == len(original_tokens) + len(
                 special_token_ids
             )
-    print("===================================================================")
+    # print("===================================================================")
 
     return final_hidden_states, detokenized
 
@@ -610,16 +637,20 @@ def extract_representations(
 
     print("Preparing output files")
     if seq2seq_component == "both" or seq2seq_component == "encoder":
+        output_dir = os.path.dirname(output_file)
+        encoder_output = os.path.join(output_dir, 'encoder-'+output_file.split(os.sep)[-1])
         encoder_writer = ActivationsWriter.get_writer(
-            f"encoder-{output_file}",
+            encoder_output,
             filetype=output_type,
             decompose_layers=decompose_layers,
             filter_layers=filter_layers,
             # dtype=dtype,
         )
     if seq2seq_component == "both" or seq2seq_component == "decoder":
+        output_dir = os.path.dirname(output_file)
+        decoder_output = os.path.join(output_dir, 'decoder-'+output_file.split(os.sep)[-1])
         decoder_writer = ActivationsWriter.get_writer(
-            f"decoder-{output_file}",
+            decoder_output,
             filetype=output_type,
             decompose_layers=decompose_layers,
             filter_layers=filter_layers,
@@ -644,8 +675,15 @@ def extract_representations(
 
     print("Extracting representations from model")
     tokenization_counts = {}  # Cache for tokenizer rules
+    
+    # for sentence_idx, sentence_pair in enumerate(
+    #     corpus_generator(encoder_input_corpus, decoder_input_corpus)
+    # ):
+
     for sentence_idx, sentence_pair in enumerate(
-        corpus_generator(encoder_input_corpus, decoder_input_corpus)
+        tqdm(corpus_generator(encoder_input_corpus, decoder_input_corpus), 
+             desc="Processing sentences", 
+             unit="sentence")
     ):
         hidden_states, extracted_words = extract_sentence_representations(
             sentence_pair,
@@ -661,16 +699,16 @@ def extract_representations(
             context_indicator=context_indicator,
         )
 
-        print(
-            "Hidden states: ",
-            hidden_states["encoder"].shape if "encoder" in hidden_states else None,
-            hidden_states["decoder"].shape if "decoder" in hidden_states else None,
-        )
-        print(
-            "# Extracted words: ",
-            len(extracted_words["encoder"]) if "encoder" in hidden_states else None,
-            len(extracted_words["decoder"]) if "decoder" in hidden_states else None,
-        )
+        # print(
+        #     "Hidden states: ",
+        #     hidden_states["encoder"].shape if "encoder" in hidden_states else None,
+        #     hidden_states["decoder"].shape if "decoder" in hidden_states else None,
+        # )
+        # print(
+        #     "# Extracted words: ",
+        #     len(extracted_words["encoder"]) if "encoder" in hidden_states else None,
+        #     len(extracted_words["decoder"]) if "decoder" in hidden_states else None,
+        # )
 
         if seq2seq_component == "both" or seq2seq_component == "encoder":
             encoder_writer.write_activations(
@@ -759,8 +797,10 @@ def main():
 
     if not args.disable_cuda and torch.cuda.is_available():
         device = torch.device("cuda")
+        print("USING GPU WOOHOO")
     else:
         device = torch.device("cpu")
+        print("NO GPU :(")
 
     extract_representations(
         args.model_desc,
