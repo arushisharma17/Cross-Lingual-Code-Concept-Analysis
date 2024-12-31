@@ -46,6 +46,13 @@ def create_word_level_dictionary(text_file_path, alignment_file_path, output_fil
 
         # Create mappings for each word in the source to the corresponding word in the target
         for source_index, target_index in alignment:
+            if source_index >= len(source_words):
+                print(f"Skipping invalid source index {source_index} for phrase {phrase_index}")
+                continue
+            if target_index >= len(target_words):
+                print(f"Skipping invalid target index {target_index} for phrase {phrase_index}")
+                continue
+                
             source_word = source_words[source_index]
             target_word = target_words[target_index]
 

@@ -63,20 +63,22 @@ clusters2 = {}
 def update_clusters(file_path, clusters):
     with open(file_path, 'r') as file:
         for line in file:
-            # Split the line based on "|||"
-            parts = line.strip().split('|||')
-            
-            # Extract word and cluster number
-            word = parts[0].strip()
-            cluster_number = int(parts[-1].strip())
-            
-            # Check if the cluster number is already in the dictionary
-            if cluster_number in clusters:
-                # If yes, add the word to the existing cluster
-                clusters[cluster_number].add(word)
-            else:
-                # If not, create a new cluster with the word
-                clusters[cluster_number] = {word}
+            if line.strip() != "":
+                # Split the line based on "|||"
+                parts = line.strip().split('|||')
+                
+                # Extract word and cluster number
+                word = parts[0].strip()
+
+                cluster_number = int(parts[-1].strip())
+                
+                # Check if the cluster number is already in the dictionary
+                if cluster_number in clusters:
+                    # If yes, add the word to the existing cluster
+                    clusters[cluster_number].add(word)
+                else:
+                    # If not, create a new cluster with the word
+                    clusters[cluster_number] = {word}
 
 # Update clusters for both sets
 update_clusters(cluster_file_path1, clusters1)

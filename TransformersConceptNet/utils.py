@@ -41,10 +41,12 @@ def cluster_read(fname):
         for line in f:
             line  = line.rstrip('\r\n')
             parts = line.split("|||")
-            words.append(parts[0])
-            cluster_idx.append(int(parts[4]))
-            words_idx.append(int(parts[3]))
-            sent_idx.append(int(parts[2]))
+
+            if len(parts) > 2:
+                words.append(parts[0])
+                cluster_idx.append(int(parts[4]))
+                words_idx.append(int(parts[3]))
+                sent_idx.append(int(parts[2]))
     return words, words_idx, sent_idx, cluster_idx
 
 def read_cluster_data(fname):

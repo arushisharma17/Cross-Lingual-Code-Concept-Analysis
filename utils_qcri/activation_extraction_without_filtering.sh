@@ -3,8 +3,8 @@
 conda activate neurox_pip
 
 scriptDir="ConceptX/scripts/"   # path to ConceptX script directory
-inputPath="Data/Java-CS/"       # path to the directory where sentence files are saved
-# inputPath="Data/EN-FR/"       # path to the directory where sentence files are saved
+# inputPath="Data/Fortran-CPP-Small/"       # path to the directory where sentence files are saved
+inputPath="Data/CPP-Cuda/"       # path to the directory where sentence files are saved
 encoder_input="input.in"       # Encoder Sentences
 decoder_input="label.out"      # Decoder Sentences
 
@@ -19,16 +19,15 @@ mkdir -p $outputDir               # Create the output directory if it doesn't ex
 
 # model="bert-base-uncased"     # Model that we want to do the extraction for
 # model="google/mt5-base"     # Model that we want to do the extraction for
-model="Salesforce/codet5-base"     # Model that we want to do the extraction for
-model_class="T5ForConditionalGeneration"
+# model="Salesforce/codet5-base"     # Model that we want to do the extraction for
+model="CodeRosetta/CodeRosetta_cpp2cuda_ft"
+# model_class="T5ForConditionalGeneration"
 NEUROX_PATH="NeuroX/scripts"
 
-sentence_length=300   # maximum sentence length
+sentence_length=1000000   # maximum sentence length
 minfreq=0 
-maxfreq=15
+maxfreq=1500000
 delfreq=10000000 
-layers_of_interest="0,1,3,6,9,12" # define layers of interest 
-layers_of_interest="1,2,3,4,5,6,7,8,9,10,11,12" # define layers of interest 
 layers_of_interest=$1
 
 # Output files in the new folder
@@ -41,24 +40,14 @@ cp ${inputPath}/$decoder_input ${outputDir}/$decoder_input.tok
 # Do sentence length filtering and keep sentences max length of {sentence_length}
 python "code/parallel_sentence_length.py" --encoder_input ${outputDir}/$encoder_input.tok --decoder_input ${outputDir}/$decoder_input.tok --encoder_output_file $encoder_working_file --decoder_output_file  $decoder_working_file --length ${sentence_length}
 
-
 # Calculate vocabulary size
 python ${scriptDir}/frequency_count.py --input-file ${encoder_working_file} --output-file ${encoder_working_file}.words_freq
-
 python ${scriptDir}/frequency_count.py --input-file ${decoder_working_file} --output-file ${decoder_working_file}.words_freq
 
+PYTHONPATH=$NEUROX_PATH python3 -u NeuroX/neurox/data/extraction/transformers_extractor.py "${model},${model}" ${encoder_working_file}  ${decoder_working_file} "activations.json"  --output_type json --seq2seq_component both --decompose_layers --filter_layers "$layers_of_interest"
 
-# Extract layer-wise activations
-# PYTHONPATH=$NEUROX_PATH python3 -u NeuroX/neurox/data/extraction/transformers_extractor.py "${model},${model},${model_class}" ${encoder_working_file}  ${decoder_working_file} "activations.json"  --output_type json --seq2seq_component 'encoder' --decompose_layers --filter_layers "$layers_of_interest"
-
-PYTHONPATH=$NEUROX_PATH python3 -u NeuroX/neurox/data/extraction/transformers_extractor.py "${model},${model},${model_class}" ${encoder_working_file}  ${decoder_working_file} "activations.json"  --output_type json --seq2seq_component both --decompose_layers --filter_layers "$layers_of_interest"
-
-# Create a dataset file with word and sentence indexes
-layers_of_interest="0 1 3 6 9 12"
-layers_of_interest="1,2,3,4,5,6,7,8,9,10,11,12" # define layers of interest 
 layers_of_interest=$1
 
-# Process each layer of interest
 for j in $layers_of_interest
 do
     python ${scriptDir}/create_data_single_layer.py --text-file ${encoder_working_file} --activation-file encoder-activations-layer${j}.json --output-prefix "${encoder_working_file}_${j}" 

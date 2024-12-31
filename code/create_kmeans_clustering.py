@@ -1,68 +1,91 @@
+import torch
 import numpy as np
+import argparse
 import time
-from memory_profiler import profile
-import argparse 
-from sklearn.cluster import KMeans
 
-print("USAGE: create_kmeans_clustering.py -p <POINT_FILE> -v <VOCAB_FILE> -k <CLUSTERS> -o <OUTPUT_FOLDER>")
-
-
-@profile
-def kmeans_cluster(P, V, K, output_path, prefix, ref=''):
+def kmeans_torch(points, num_clusters, tol=1e-4, verbose=False):
     """
-    Uses the point.npy P, vocab.npy V files of a layer (generated using https://github.com/hsajjad/ConceptX/ library) to produce a clustering of <K> clusters at <output_path> named clusters-kmeans-{K}.txt
+    Perform KMeans clustering using PyTorch.
+
+    Args:
+        points (numpy.ndarray): Data points of shape (N, D).
+        num_clusters (int): Number of clusters.
+        tol (float): Convergence tolerance for stopping criteria.
+        verbose (bool): Whether to print iteration progress.
+
+    Returns:
+        centroids (torch.Tensor): Final cluster centroids.
+        labels (numpy.ndarray): Cluster labels for each point.
     """
-    kmeans = KMeans(n_clusters=K, verbose=3, random_state=212)
-    output = kmeans.fit(P)
-    
-    out_file =  f"{output_path}/{prefix}-clusters-kmeans-{K}{ref}.txt"
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    points = torch.tensor(points, dtype=torch.float32).to(device)
+    centroids = points[torch.randperm(points.size(0))[:num_clusters]]  # Random initial centroids
 
-    clusters = {i:[] for i in range(K)}
-    
-    for v, l in zip(V, output.labels_):
-       clusters[l].append(f'{v}|||{l}')
+    prev_centroids = centroids.clone()
+    for iteration in range(1000):  # Maximum iterations safeguard
+        # Calculate distances from points to centroids
+        distances = torch.cdist(points, centroids, p=2)
+        labels = distances.argmin(dim=1)
+
+        # Update centroids
+        for i in range(num_clusters):
+            cluster_points = points[labels == i]
+            if cluster_points.size(0) > 0:
+                centroids[i] = cluster_points.mean(dim=0)
+
+        # Check for convergence
+        centroid_shift = torch.norm(centroids - prev_centroids, p=2, dim=1).max()
+        if verbose:
+            print(f"Iteration {iteration + 1}, Centroid shift: {centroid_shift:.6f}")
+
+        if centroid_shift < tol:
+            if verbose:
+                print("Convergence reached.")
+            break
+
+        prev_centroids = centroids.clone()
+
+    return centroids, labels.cpu().numpy()
 
 
-    out = ""
-    for k,v in clusters.items():
-        out += '\n'.join(v) + '\n'
+def main(args):
+    # Load the data
+    P = np.load(args.point_file)
+    V = np.load(args.vocab_file)
 
-    
-    with open(out_file, 'w') as f2:
-        f2.write(out)
+    useable_count = int(float(args.count) * len(V)) if args.count != -1 else -1
+    P = P[:useable_count, :] if useable_count != -1 else P
+    V = V[:useable_count] if useable_count != -1 else V
 
-    return out
+    K = int(args.cluster)
+    start_time = time.time()
+
+    # Run KMeans clustering
+    centroids, labels = kmeans_torch(P, K, tol=1e-4, verbose=True)
+
+    # Save the clustering results
+    clusters = {i: [] for i in range(K)}
+    for v, l in zip(V, labels):
+        clusters[l].append(f'{v}|||{l}')
+
+    out_file = f"{args.output_path}/{args.prefix}-clusters-kmeans-{K}.txt"
+    with open(out_file, 'w') as f:
+        for k, v in clusters.items():
+            f.write('\n'.join(v) + '\n')
+
+    end_time = time.time()
+    print(f"Clustering completed in {end_time - start_time:.2f} seconds.")
+    print(f"Results saved to {out_file}")
 
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--vocab-file", "-v", help="Path to the vocab file")
+    parser.add_argument("--point-file", "-p", help="Path to the point file")
+    parser.add_argument("--output-path", "-o", help="Output path for clustering results")
+    parser.add_argument("--prefix", "-pf", help="Prefix for the output file")
+    parser.add_argument("--cluster", "-k", help="Number of clusters")
+    parser.add_argument("--count", "-c", help="Point count ratio", default=-1)
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--vocab-file","-v", help="output vocab file with complete path")
-parser.add_argument("--point-file","-p", help="output point file with complete path")
-parser.add_argument("--output-path","-o", help="output path clustering model and result files")
-parser.add_argument("--prefix","-pf", help="prefix to output file")
-parser.add_argument("--cluster","-k", help="cluster number")
-parser.add_argument("--count","-c", help="point count ratio", default=-1)
-
-
-args2 = parser.parse_args()
-vocab_file = args2.vocab_file
-point_file = args2.point_file
-prefix = args2.prefix
-output_path = args2.output_path
-K = int(args2.cluster)
-point_count_ratio = float(args2.count)
-
-P = np.load(point_file)
-V= np.load(vocab_file)
-
-useable_count = int(point_count_ratio*len(V)) if point_count_ratio != -1 else -1
-
-P= P[:useable_count, :]
-V= V[:useable_count]
-
-start_time = time.time()
-ref = '-' + str(point_count_ratio) if point_count_ratio > 0 else ''
-kmeans_cluster(P, V, K, output_path, prefix, ref)
-end_time = time.time()
-
-print(f"Runtime: {end_time - start_time}")
+    args = parser.parse_args()
+    main(args)

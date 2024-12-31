@@ -3,10 +3,11 @@
 clusters=$1 # specify the number of clusters
 layer=$2
 mode=$3
+activation_folder=$4
 
 if [ "$mode" == "visualize" ]; then
     echo "Preparing for visualize"
-    outputDir="visualize_1000/layer${layer}" # specify the path to the output file 
+    outputDir="visualize_${clusters}/layer${layer}" # specify the path to the output file 
 else
     echo "Preparing for alignment"
     outputDir="layer${layer}" # specify the path to the output file 
@@ -20,16 +21,16 @@ fi
 mkdir -p $outputDir 
 
 conda activate neurox_pip
-vocab_file="activationsOutput_no_filtering_${layer}/encoder-processed-vocab-${layer}.npy" # specify the path to the vocab file from the activation extraction step
-point_file="activationsOutput_no_filtering_${layer}/encoder-processed-point-${layer}.npy" # specify the path to the point file from the activation extraction step
+vocab_file="${activation_folder}/activationsOutput_no_filtering_${layer}/encoder-processed-vocab-${layer}.npy" # specify the path to the vocab file from the activation extraction step
+point_file="${activation_folder}/activationsOutput_no_filtering_${layer}/encoder-processed-point-${layer}.npy" # specify the path to the point file from the activation extraction step
 prefix="encoder"
 
 python -u code/create_kmeans_clustering.py -v $vocab_file -p $point_file -o $outputDir -pf $prefix -k $clusters
 
 
 conda activate neurox_pip
-vocab_file="activationsOutput_no_filtering_${layer}/decoder-processed-vocab-${layer}.npy" # specify the path to the vocab file from the activation extraction step
-point_file="activationsOutput_no_filtering_${layer}/decoder-processed-point-${layer}.npy" # specify the path to the point file from the activation extraction step
+vocab_file="${activation_folder}/activationsOutput_no_filtering_${layer}/decoder-processed-vocab-${layer}.npy" # specify the path to the vocab file from the activation extraction step
+point_file="${activation_folder}/activationsOutput_no_filtering_${layer}/decoder-processed-point-${layer}.npy" # specify the path to the point file from the activation extraction step
 prefix="decoder"
 
 python -u code/create_kmeans_clustering.py -v $vocab_file -p $point_file -o $outputDir -pf $prefix -k $clusters
