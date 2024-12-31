@@ -92,7 +92,7 @@ def get_sentences():
     clusters = load_all_cluster_data(clusters_path=clusters_path)
 
     if temp not in list(clusters.keys()): 
-        return f"<p> Invalid cluster ID {temp} </p>"
+        return {"success": True, "sentences": local_sentences}
     
     local_sentences = [[SENTENCES[sentence_idx], token_idx] for token, sentence_idx, token_idx in clusters[f"c{cluster_id}"] if token == word]
 

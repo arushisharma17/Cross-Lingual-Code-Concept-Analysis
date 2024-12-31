@@ -1,6 +1,7 @@
 import argparse
 import os
 from tree_sitter import Language, Parser
+import tqdm
 
 def extract_tokens(source_code: bytes, parser: Parser, level='leaf'):
     tree = parser.parse(source_code)
@@ -22,18 +23,22 @@ def extract_tokens(source_code: bytes, parser: Parser, level='leaf'):
 
 def process_parallel_corpus(corpus_file, output_file, left_parser, right_parser, level='leaf'):
     with open(corpus_file, 'r') as f, open(output_file, 'w') as output:
-        for line in f:
-            # Split the parallel functions
-            left_func, right_func = line.strip().split(' ||| ')
-
-            # Parse and tokenize the left function
-            left_tokens = extract_tokens(left_func.encode('utf-8'), left_parser, level=level)
-
-            # Parse and tokenize the C# function
-            right_tokens = extract_tokens(right_func.encode('utf-8'), right_parser, level=level)
-
-            # Join tokens with space and write to output
-            output.write(f"{' '.join(left_tokens)} ||| {' '.join(right_tokens)}\n")
+        for line in tqdm.tqdm(f):
+            try:
+                # Split the parallel functions
+                left_func, right_func = line.strip().split(' ||| ')
+    
+                # Parse and tokenize the left function
+                left_tokens = extract_tokens(left_func.encode('utf-8'), left_parser, level=level)
+    
+                # Parse and tokenize the C# function
+                right_tokens = extract_tokens(right_func.encode('utf-8'), right_parser, level=level)
+    
+                # Join tokens with space and write to output
+                output.write(f"{' '.join(left_tokens)} ||| {' '.join(right_tokens)}\n")
+            except Exception as e:
+                print(f'{line=}')
+                break
 
 def main():
     parser = argparse.ArgumentParser(description='Tokenize a ||| delimited parallel corpus of functions in two different languages.')
@@ -42,7 +47,7 @@ def main():
                         help='Path to the output file for formatted tokens. Defaults to tree_sitter_tokenized_{level}.txt in the input file\'s directory.',
                         default=None)
     parser.add_argument('left_lang', type=str, help='The name of the language that appears on the left of the ||| delimiter in your parallel corpus.', default='java')
-    parser.add_argument('right_lang', type=str, help='The name of the language that appears on the right of the ||| delimiter in your parallel corpus.', default='c-sharp')
+    parser.add_argument('right_lang', type=str, help='The name of the language that appears on the right of the ||| delimiter in your parallel corpus.', default='c_sharp')
     parser.add_argument('--level', type=str, choices=['leaf', 'line'], default='leaf',
                         help='Tokenization level: "leaf" for individual tokens, "line" for higher-level constructs (e.g., statements).')
 
@@ -64,8 +69,8 @@ def main():
     )
 
     # .replace() needed for Weird C# issue. This could come back to bite me in the butt.
-    LEFT_LANGUAGE = Language('build/my-languages.so', f'{args.left_lang.replace("-", "_")}')
-    RIGHT_LANGUAGE = Language('build/my-languages.so', f'{args.right_lang.replace("-", "_")}') 
+    LEFT_LANGUAGE = Language('build/my-languages.so', f'{args.left_lang}')
+    RIGHT_LANGUAGE = Language('build/my-languages.so', f'{args.right_lang}') 
     
     left_parser = Parser()
     left_parser.set_language(LEFT_LANGUAGE)

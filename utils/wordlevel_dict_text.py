@@ -35,6 +35,7 @@ def create_word_level_dictionary(text_file_path, alignment_file_path, output_fil
 
     # Generate the dictionary content based on the alignments
     for phrase_index, alignment in enumerate(alignments):
+
         # Get the source and target phrases
         source_phrase = source_phrases[phrase_index]
         target_phrase = target_phrases[phrase_index]
@@ -43,8 +44,21 @@ def create_word_level_dictionary(text_file_path, alignment_file_path, output_fil
         source_words = source_phrase.split()
         target_words = target_phrase.split()
 
+        # print(f"Phrase {phrase_index}:")
+        # print(f"  Source words: {source_words}")
+        # print(f"  Target words: {target_words}")
+        # print(f"  Alignment: {alignment}")
+    
         # Create mappings for each word in the source to the corresponding word in the target
         for source_index, target_index in alignment:
+
+            if source_index >= len(source_words):
+                print(f"Skipping invalid source index {source_index} for phrase {phrase_index}")
+                continue
+            if target_index >= len(target_words):
+                print(f"Skipping invalid target index {target_index} for phrase {phrase_index}")
+                continue
+            
             source_word = source_words[source_index]
             target_word = target_words[target_index]
 
