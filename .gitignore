@@ -6,3 +6,5 @@ trashcan/
 *activationsOutput*/
 Experiments/
 .ipynb_checkpoints/
+ConceptX/
+cache/

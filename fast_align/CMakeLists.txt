@@ -18,10 +18,3 @@ add_executable(fast_align src/fast_align.cc src/ttables.cc)
 add_executable(atools src/alignment_io.cc src/atools.cc)
 configure_file(src/force_align.py force_align.py COPYONLY)
 
-set(TREE_SITTER_DIR tree-sitter)
-include_directories(${TREE_SITTER_DIR}/include)
-
-file(GLOB TREE_SITTER_SRC ${TREE_SITTER_DIR}/lib/src/*.c)
-add_library(tree-sitter STATIC ${TREE_SITTER_SRC})
-
-target_link_libraries(fast_align tree-sitter)
