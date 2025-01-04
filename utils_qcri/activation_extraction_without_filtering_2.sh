@@ -1,5 +1,7 @@
 #!/bin/bash -l
 
+# Set local cache directory
+export HF_HOME="./cache"
 conda activate neurox_pip
 
 # Print usage instructions

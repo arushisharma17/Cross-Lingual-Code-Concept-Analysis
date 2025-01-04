@@ -1,5 +1,19 @@
 #!/bin/bash -l
 
+# Initialize conda for this shell session
+eval "$(conda shell.bash hook)"
+
+# Unset any existing HF_HOME value
+unset HF_HOME
+
+# Force set cache directory to local path and ensure it exists
+export HF_HOME="${PWD}/cache"
+mkdir -p "${PWD}/cache"
+
+# Create experiments directory
+mkdir -p Experiments
+
+# Now activate the conda environment
 conda activate neurox_pip
 
 # Print usage instructions
@@ -142,7 +156,7 @@ PYTHONPATH="$NEUROX_PATH" python -u NeuroX/neurox/data/extraction/transformers_e
     --output_type json \
     --seq2seq_component both \
     --decompose_layers \
-    --filter_layers "$layer" 
+    --filter_layers "$layer"
     
 # Step 3: Create dataset files
 python "${scriptDir}/create_data_single_layer.py" \

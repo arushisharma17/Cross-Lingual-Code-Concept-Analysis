@@ -1,5 +1,5 @@
 import os
-os.environ['HF_HOME'] = '/work/instruction/coms-599-29-f24/group_4_clustering/Cross-Lingual-Code-Concept-Analysis/cache/'
+os.environ['HF_HOME'] = "./cache"
 
 import subprocess
 

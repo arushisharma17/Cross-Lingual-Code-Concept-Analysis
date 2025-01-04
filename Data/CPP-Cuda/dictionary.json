@@ -1,0 +1,32 @@
+{
+    "int": {
+        "void": {
+            "Probability": 1.0,
+            "Count": 1
+        }
+    },
+    "main()": {
+        "kernel()": {
+            "Probability": 1.0,
+            "Count": 1
+        }
+    },
+    "return": {
+        "return;": {
+            "Probability": 1.0,
+            "Count": 1
+        }
+    },
+    "{": {
+        "{": {
+            "Probability": 1.0,
+            "Count": 1
+        }
+    },
+    "0;": {
+        "}": {
+            "Probability": 1.0,
+            "Count": 1
+        }
+    }
+}

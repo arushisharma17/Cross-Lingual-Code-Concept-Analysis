@@ -10,7 +10,7 @@ Can also be invoked as a script as follows:
 """
 
 import os
-os.environ['HF_HOME'] = '/work/instruction/coms-599-29-f24/group_4_clustering/Cross-Lingual-Code-Concept-Analysis/cache/'
+os.environ['HF_HOME'] = './cache'
 from huggingface_hub import login
 login(token = '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')
 
@@ -29,20 +29,29 @@ from transformers import EncoderDecoderModel, AutoTokenizer
 from transformers import RobertaTokenizer, T5ForConditionalGeneration
 
 
+from transformers import (
+    AutoModel,
+    AutoModelForSeq2SeqLM,
+    AutoTokenizer,
+    RobertaTokenizer,
+    EncoderDecoderModel,
+    AutoConfig
+)
+
 def get_model_and_tokenizer(model_desc, device="cuda", random_weights=False):
     """
-    Automatically get the appropriate ``transformers`` model and tokenizer based
-    on the model description
+    Automatically get the appropriate transformers model and tokenizer
+    based on the model description.
 
     Parameters
     ----------
     model_desc : str
-        Model description; can either be a model name like ``bert-base-uncased``,
-        a comma separated list indicating <model>,<tokenizer> (since 1.0.8),
-        or a path to a trained model
+        Model description; can either be a model name like 'bert-base-uncased',
+        a comma-separated list indicating <model>,<tokenizer>,
+        or a path to a trained model.
 
     device : str, optional
-        Device to load the model on, cpu or gpu. Default is cpu.
+        Device to load the model on, 'cpu' or 'cuda'. Default is 'cuda'.
 
     random_weights : bool, optional
         Whether the weights of the model should be randomized. Useful for analyses
@@ -51,45 +60,55 @@ def get_model_and_tokenizer(model_desc, device="cuda", random_weights=False):
     Returns
     -------
     model : transformers model
-        An instance of one of the transformers.modeling classes
+        An instance of one of the transformers modeling classes.
     tokenizer : transformers tokenizer
-        An instance of one of the transformers.tokenization classes
+        An instance of one of the transformers tokenization classes.
     """
 
-    # NOTE: Contains a really shitty patch
-    model_desc = model_desc.split(",")
-    if len(model_desc) == 1:
-        model_name = model_desc[0]
-        tokenizer_name = model_desc[0]
-        model = EncoderDecoderModel.from_pretrained(model_name, output_hidden_states=True, model_max_length=8192).to(device)
-        if model_name == 'Salesforce/codet5-base':
-            tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
-        else:
-            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    elif len(model_desc) == 3:
-        model_name = model_desc[0]
-        tokenizer_name = model_desc[1]
-        model_class_name = model_desc[2]
-        model_class=getattr(transformers, model_class_name)
-        model = model_class.from_pretrained(model_name, output_hidden_states=True).to(device)
-        if model_name == 'Salesforce/codet5-base':
-            tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
-        else:
-            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    else:
-        model_name = model_desc[0]
-        tokenizer_name = model_desc[1]
-        model = EncoderDecoderModel.from_pretrained(model_name, output_hidden_states=True).to(device)
-        if model_name == 'Salesforce/codet5-base':
-            tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
-        else:
-            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    model_desc_parts = model_desc.split(",")
+    model_name = model_desc_parts[0]
+    tokenizer_name = model_desc_parts[1] if len(model_desc_parts) > 1 else model_name
 
+    # Determine the model class to use
+    if len(model_desc_parts) == 3:
+        model_class_name = model_desc_parts[2]
+        model_class = getattr(transformers, model_class_name)
+    else:
+        # Use AutoModelForSeq2SeqLM for encoder-decoder models like T5
+        try:
+            config = AutoConfig.from_pretrained(model_name)
+            if config.is_encoder_decoder:
+                model_class = AutoModelForSeq2SeqLM
+            else:
+                model_class = AutoModel
+        except Exception as e:
+            print(f"Error loading config for {model_name}: {e}")
+            return None, None
+
+    # Load the model
+    try:
+        model = model_class.from_pretrained(model_name, output_hidden_states=True).to(device)
+    except Exception as e:
+        print(f"Error loading model {model_name}: {e}")
+        return None, None
+
+    # Load the tokenizer
+    try:
+        if model_name == 'Salesforce/codet5-base':
+            tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    except Exception as e:
+        print(f"Error loading tokenizer {tokenizer_name}: {e}")
+        return None, None
+
+    # Randomize weights if specified
     if random_weights:
         print("Randomizing weights")
         model.init_weights()
 
     return model, tokenizer
+
 
 
 def aggregate_repr(state, start, end, aggregation):

@@ -20,7 +20,6 @@
 #include <fstream>
 #include <getopt.h>
 #include <sstream>
-#include <tree_sitter/api.h>
 
 #include "src/corpus.h"
 #include "src/ttables.h"
