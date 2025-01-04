@@ -1,6 +1,11 @@
 import argparse
 import os
-import json
+import re
+
+def tokenize(code):
+    # Regular expression to split by word boundaries and keep special characters
+    tokens = re.findall(r'\w+|[^\s\w]', code)
+    return tokens
 
 # Function to create the per-word level dictionary from input files
 def create_word_level_dictionary(text_file_path, alignment_file_path, output_file_path):
@@ -41,9 +46,9 @@ def create_word_level_dictionary(text_file_path, alignment_file_path, output_fil
         source_phrase = source_phrases[phrase_index]
         target_phrase = target_phrases[phrase_index]
 
-        # Split phrases into words
-        source_words = source_phrase.split()
-        target_words = target_phrase.split()
+        # Split phrases into words using the tokenize function instead of simple split
+        source_words = tokenize(source_phrase)
+        target_words = tokenize(target_phrase)
 
         # print(f"Phrase {phrase_index}:")
         # print(f"  Source words: {source_words}")
@@ -77,21 +82,16 @@ def create_word_level_dictionary(text_file_path, alignment_file_path, output_fil
                 count_dict[source_word] = 0
             count_dict[source_word] += 1
 
-    # Calculate probabilities and prepare JSON output
-    word_level_dictionary_json = {}
+    # Calculate probabilities and prepare output
+    output_lines = []
     for source_word, targets in word_level_dictionary.items():
-        word_level_dictionary_json[source_word] = {}
         for target_word, metrics in targets.items():
             probability = metrics['Count'] / count_dict[source_word]
-            word_level_dictionary_json[source_word][target_word] = {
-                'Probability': round(probability, 2),
-                'Count': metrics['Count']
-            }
+            output_lines.append(f"{source_word} -> {target_word}: Probability = {probability:.2f}, Count = {metrics['Count']}")
 
-    # Output the word-level dictionary content to a JSON file
-    output_file_path = output_file_path.replace('.txt', '.json')
+    # Output the word-level dictionary content to a file
     with open(output_file_path, 'w') as dict_file:
-        json.dump(word_level_dictionary_json, dict_file, indent=4)
+        dict_file.write('\n'.join(output_lines) + '\n')
 
     print(f"{output_file_path} created successfully.")
 
@@ -111,6 +111,5 @@ if __name__ == "__main__":
 
     # Call the function to create the word-level dictionary
     create_word_level_dictionary(args.text_file, args.alignment_file, args.output_file)
-
 
 

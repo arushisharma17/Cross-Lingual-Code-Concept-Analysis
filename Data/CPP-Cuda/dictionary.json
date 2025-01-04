@@ -1,32 +1,50 @@
 {
     "int": {
         "void": {
-            "Probability": 1.0,
-            "Count": 1
+            "Count": 1,
+            "Probability": 1.0
         }
     },
-    "main()": {
-        "kernel()": {
-            "Probability": 1.0,
-            "Count": 1
+    "}": {
+        "}": {
+            "Count": 1,
+            "Probability": 1.0
         }
     },
-    "return": {
-        "return;": {
-            "Probability": 1.0,
-            "Count": 1
+    "main": {
+        "kernel": {
+            "Count": 1,
+            "Probability": 1.0
+        }
+    },
+    ")": {
+        ")": {
+            "Count": 1,
+            "Probability": 1.0
+        }
+    },
+    ";": {
+        ";": {
+            "Count": 1,
+            "Probability": 1.0
+        }
+    },
+    "(": {
+        "(": {
+            "Count": 1,
+            "Probability": 1.0
         }
     },
     "{": {
         "{": {
-            "Probability": 1.0,
-            "Count": 1
+            "Count": 1,
+            "Probability": 1.0
         }
     },
-    "0;": {
-        "}": {
-            "Probability": 1.0,
-            "Count": 1
+    "return": {
+        "return": {
+            "Count": 1,
+            "Probability": 1.0
         }
     }
 }

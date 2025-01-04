@@ -2,6 +2,7 @@ import argparse
 import json
 from pathlib import Path
 import os
+import re
 
 def parse_sentences_and_alignments(sentence_file, alignment_file):
     mapping_dict = {}
@@ -17,22 +18,45 @@ def parse_sentences_and_alignments(sentence_file, alignment_file):
     # Loop through sentences and alignments and parse them
     for i, (sentence, alignment) in enumerate(zip(sentences, alignments)):
         src_sentence, tgt_sentence = sentence.split("|||")
-        src_words = src_sentence.strip().split()
-        tgt_words = tgt_sentence.strip().split()
+        src_words = tokenize(src_sentence)
+        print(src_words)
+        tgt_words = tokenize(tgt_sentence)
+        print(tgt_words)
 
         alignments_list = alignment.split()
         sentence_alignments = []
 
         # Parse alignment pairs and map words
         for align in alignments_list:
-            src_idx, tgt_idx = map(int, align.split('-'))
-            src_word = src_words[src_idx]
-            tgt_word = tgt_words[tgt_idx]
-            sentence_alignments.append([src_word, tgt_word, [src_idx], [tgt_idx]])
+            try:
+                src_idx, tgt_idx = map(int, align.split('-'))
+
+                # Validate indices
+                if src_idx < 0 or src_idx >= len(src_words):
+                    print(f"Warning: Adjusting invalid source index {src_idx} for sentence {i}")
+                    src_word = "<UNK>"
+                else:
+                    src_word = src_words[src_idx]
+
+                if tgt_idx < 0 or tgt_idx >= len(tgt_words):
+                    print(f"Warning: Adjusting invalid target index {tgt_idx} for sentence {i}")
+                    tgt_word = "<UNK>"
+                else:
+                    tgt_word = tgt_words[tgt_idx]
+
+                sentence_alignments.append([src_word, tgt_word, [src_idx], [tgt_idx]])
+            except ValueError:
+                print(f"Skipping invalid alignment format '{align}' in sentence {i}")
+                continue
 
         mapping_dict[i] = sentence_alignments
 
     return mapping_dict
+
+def tokenize(code):
+    # Regular expression to split by word boundaries and keep special characters
+    tokens = re.findall(r'\w+|[^\s\w]', code)
+    return tokens
 
 def main():
     parser = argparse.ArgumentParser(description="Parse sentence alignments and sentences into mapping_dict format.")
