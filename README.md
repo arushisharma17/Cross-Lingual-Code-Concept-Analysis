@@ -39,20 +39,6 @@ Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to tokenize l
 
 ### Collecting Alignments
 
-#### Using FastAlign
-
-```bash
-cd fast_align
-mkdir build
-cd build
-cmake ..
-make
-cd ../..
-./fast_align/build/fast_align -i Data/CPP-Cuda/cpp-cuda.txt -d -o -v > Data/CPP-Cuda/forward.align
-```
-
-Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to make alignment like Data/Java-CS/java-cs.txt
-
 #### Using awesome-align
 
 ```bash
@@ -70,20 +56,14 @@ Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to make align
 
 ```bash
 python -u utils/wordlevel_dict_text.py Data/CPP-Cuda/cpp-cuda.txt Data/CPP-Cuda/forward.align
+python -u utils/wordlevel_dict.py Data/CPP-Cuda/cpp-cuda.txt Data/CPP-Cuda/forward.align
 ```
 
 Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to make translation dictionary like Data/Java-CS/java-cs.txt
 
 ### Making Mapping Dictionary
 
-#### Using FastAlign
-
-```bash
-python -u utils/mapping_fastalign.py Data/CPP-Cuda/cpp-cuda.txt Data/CPP-Cuda/forward.align
-```
-Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to make mapping dictionary like Data/Java-CS/java-cs.txt
-
-#### Using awesome-align
+Using awesome-align
 
 ```bash
     python -u utils/mapping_awesomealign.py Data/CPP-Cuda/cpp-cuda.txt Data/CPP-Cuda/forward.align
@@ -100,15 +80,15 @@ Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to split into
 
 #### Running Activation Extraction 
 
-##### Concept Alignment Experiment
-
 ```bash
 mkdir -p cache
 export HF_HOME="./cache/"
 ```
 
+##### Concept Alignment Experiment
+
 ```bash
-dos2unix utils_qcri/activation_extraction_with_filtering_2.sh
+#dos2unix utils_qcri/activation_extraction_with_filtering_2.sh
 ./utils_qcri/activation_extraction_with_filtering_2.sh --model google-t5/t5-base  --inputPath Data/CPP-Cuda/ --layer 3
 ```
 
@@ -117,7 +97,7 @@ Note: Change the inputPath to the corpus you want to run activation extraction f
 ##### Overlap Experiment
 
 ```bash
-dos2unix utils_qcri/activation_extraction_without_filtering_2.sh
+#dos2unix utils_qcri/activation_extraction_without_filtering_2.sh
 ./utils_qcri/activation_extraction_without_filtering_2.sh --model google-t5/t5-base  --inputPath Data/CPP-Cuda --layer 3
 ```
 
@@ -126,14 +106,14 @@ Note: Change the inputPath to the corpus you want to run activation extraction f
 ### Clustering Representations
 
 ```bash
-dos2unix utils_qcri/clustering_2.sh
+#dos2unix utils_qcri/clustering_2.sh
 ./utils_qcri/clustering_2.sh --inputPath Experiments/google-t5_t5-base/Data_CPP-Cuda/layer3/extraction_without_filtering --clusters 500 --mode visualize
 ```
 
 ### Aligning Clusters
 
 ```bash
-dos2unix utils_qcri/get_alignment_2.sh
+#dos2unix utils_qcri/get_alignment_2.sh
 utils_qcri/get_alignment_2.sh --clusterDir Experiments/google-t5_t5-base/Data_CPP-Cuda/layer3/extraction_without_filtering/clustering --dictionary Data/CPP-Cuda/dictionary.json
 ```
 
