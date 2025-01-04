@@ -3,13 +3,6 @@
 # Initialize conda for this shell session
 eval "$(conda shell.bash hook)"
 
-# Unset any existing HF_HOME value
-unset HF_HOME
-
-# Force set cache directory to local path and ensure it exists
-export HF_HOME="${PWD}/cache"
-mkdir -p "${PWD}/cache"
-
 # Create experiments directory
 mkdir -p Experiments
 
