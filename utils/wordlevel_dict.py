@@ -1,6 +1,12 @@
 import argparse
 import json
 import os
+import re
+
+def tokenize(code):
+    # Regular expression to split by word boundaries and keep special characters
+    tokens = re.findall(r'\w+|[^\s\w]', code)
+    return tokens
 
 # Function to create the per-word level dictionary from input files
 def create_word_level_dictionary(text_file_path, alignment_file_path, output_file_path):
@@ -40,9 +46,9 @@ def create_word_level_dictionary(text_file_path, alignment_file_path, output_fil
         source_phrase = source_phrases[phrase_index]
         target_phrase = target_phrases[phrase_index]
 
-        # Split phrases into words
-        source_words = source_phrase.split()
-        target_words = target_phrase.split()
+        # Split phrases into words using the tokenize function
+        source_words = tokenize(source_phrase)
+        target_words = tokenize(target_phrase)
 
         # Create mappings for each word in the source to the corresponding word in the target
         for source_index, target_index in alignment:

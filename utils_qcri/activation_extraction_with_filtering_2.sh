@@ -1,11 +1,5 @@
 #!/bin/bash -l
 
-# Initialize conda for this shell session
-eval "$(conda shell.bash hook)"
-
-# Create experiments directory
-mkdir -p Experiments
-
 # Now activate the conda environment
 conda activate neurox_pip
 

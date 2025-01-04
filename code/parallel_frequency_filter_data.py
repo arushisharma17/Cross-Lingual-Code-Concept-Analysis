@@ -41,18 +41,19 @@ def main():
 
     mapping = {}
     with open(args.mapping_dict) as f:
-        print ("Loading mapping")
+        print("Loading mapping")
         mapping = json.load(f)
 
     pair_counts = Counter()
     for sentence_idx in mapping:
-        for match in mapping[sentence_idx]:
-            src_word, tgt_word, src_idxs, tgt_idxs = match
+        for alignment in mapping[sentence_idx]:
+            # Each alignment is [src_word, tgt_word, src_indices, tgt_indices]
+            src_word, tgt_word, src_idxs, tgt_idxs = alignment
+            
+            # We'll count each aligned pair once per occurrence
             pair_counts[(src_word, tgt_word)] += 1
-    
 
     print("Number of unique pairs: {}".format(len(pair_counts)))
-
 
     with open(args.src_sentences) as fp:
         src_sentences = json.load(fp)
@@ -108,66 +109,37 @@ def main():
         print ("Constructing output datasets")
         for raw_sentence_idx in mapping:
             sentence_idx = int(raw_sentence_idx)
-            for match in mapping[raw_sentence_idx]:
-                src_words, tgt_words, src_idxs, tgt_idxs = match
-
-                assert len(src_words.split(" ")) == len(src_idxs)
-                assert len(tgt_words.split(" ")) == len(tgt_idxs)
-
-                # Check if we should include this token or drop it
+            for alignment in mapping[raw_sentence_idx]:
+                src_word, tgt_word, src_idxs, tgt_idxs = alignment
                 
-                if pair_counts[(src_words, tgt_words)] > del_freq:
-                    print(f"Delete pair {src_words}, {tgt_words}")
-                    delskip += 1
-                    delskips.add((src_words, tgt_words))
-                elif pair_counts[(src_words, tgt_words)] < min_freq:
-                    print (f"Skipping pair with low frequency: {src_words}, {tgt_words}")
-                    minskip += 1
-                    minskips.add((src_words, tgt_words))
-                else:
-                    currPairCount[(src_words, tgt_words)] += 1
+                # For each aligned pair of indices
+                for src_idx, tgt_idx in zip(src_idxs, tgt_idxs):
+                    src_key = (sentence_idx, src_idx)
+                    tgt_key = (sentence_idx, tgt_idx)
+                    
+                    if src_key not in token_to_src_dataset or tgt_key not in token_to_tgt_dataset:
+                        continue
 
-                    if currPairCount[(src_words, tgt_words)] <= max_freq:
-                        # Checks
-                        for src_word, src_idx in zip(src_words.split(" "), src_idxs):
-                            key, activations = src_dataset[token_to_src_dataset[(sentence_idx, src_idx)]]
-                            token, _, key_sentence_idx, key_token_idx = key.split("|||")
-                            key_sentence_idx = int(key_sentence_idx)
-                            key_token_idx = int(key_token_idx)
-
-                            # print(f"Token from dataset: {token}, Source word: {src_word}, Sentence index: {sentence_idx}, Token index: {src_idx}, {token_to_src_dataset[(sentence_idx, src_idx)]}")
-
-                            assert token == src_word
-                            assert key_sentence_idx == sentence_idx
-                            assert key_token_idx == src_idx
-
-                            src_output_word_counts[src_word] += 1
-                            filtered_output_src_dataset.append([
-                                f"{src_word}|||{src_output_word_counts[src_word]-1}|||{sentence_idx}|||{src_idx}",
-                                activations
-                            ])
-
-                        for tgt_word, tgt_idx in zip(tgt_words.split(" "), tgt_idxs):
-                            key, activations = tgt_dataset[token_to_tgt_dataset[(sentence_idx, tgt_idx)]]
-                            token, _, key_sentence_idx, key_token_idx = key.split("|||")
-                            key_sentence_idx = int(key_sentence_idx)
-                            key_token_idx = int(key_token_idx)
-
-                            # print(f"Token from dataset: {token}, Source word: {tgt_word}, Sentence index: {sentence_idx}, Token index: {tgt_idx}, {token_to_tgt_dataset[(sentence_idx, tgt_idx)]}")
-
-                            assert token == tgt_word
-                            assert key_sentence_idx == sentence_idx
-                            assert key_token_idx == tgt_idx
-
-                            tgt_output_word_counts[tgt_word] += 1
-                            filtered_output_tgt_dataset.append([
-                                f"{tgt_word}|||{tgt_output_word_counts[tgt_word]-1}|||{sentence_idx}|||{tgt_idx}",
-                                activations
-                            ])                        
+                    # Apply frequency filtering
+                    if pair_counts[(src_word, tgt_word)] > del_freq:
+                        delskip += 1
+                        delskips.add((src_word, tgt_word))
+                    elif pair_counts[(src_word, tgt_word)] < min_freq:
+                        minskip += 1
+                        minskips.add((src_word, tgt_word))
                     else:
-                        # print (f"Crossed max frequency {src_words}, {tgt_words}")
-                        maxskip += 1
-                        maxskips.add((src_words, tgt_words))
+                        currPairCount[(src_word, tgt_word)] += 1
+                        
+                        if currPairCount[(src_word, tgt_word)] <= max_freq:
+                            # Add to filtered output
+                            key, activations = src_dataset[token_to_src_dataset[src_key]]
+                            filtered_output_src_dataset.append([key, activations])
+                            
+                            key, activations = tgt_dataset[token_to_tgt_dataset[tgt_key]]
+                            filtered_output_tgt_dataset.append([key, activations])
+                        else:
+                            maxskip += 1
+                            maxskips.add((src_word, tgt_word))
 
     print("Writing datasets...")
     with open(args.output_src_file_prefix+"_min_"+str(min_freq)+"_max_"+str(max_freq)+"_del_"+str(del_freq)+"-dataset.json", 'w') as fp:

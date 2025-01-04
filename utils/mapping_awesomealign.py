@@ -2,6 +2,12 @@ import argparse
 import json
 from pathlib import Path
 import os
+import re
+
+def tokenize(code):
+    # Regular expression to split by word boundaries and keep special characters
+    tokens = re.findall(r'\w+|[^\s\w]', code)
+    return tokens
 
 def parse_sentences_and_alignments(sentence_file, alignment_file):
     mapping_dict = {}
@@ -14,9 +20,11 @@ def parse_sentences_and_alignments(sentence_file, alignment_file):
 
     for i, (sentence, alignment) in enumerate(zip(sentences, alignments)):
         src_sentence, tgt_sentence = sentence.split("|||")
-        
-        src_words = src_sentence.strip().split()
-        tgt_words = tgt_sentence.strip().split()
+        print(src_sentence)
+        src_words = tokenize(src_sentence)
+        print(src_words)
+        tgt_words = tokenize(tgt_sentence)
+        print(tgt_words)
 
         # Create a dictionary to group alignments by source/target words
         word_alignments = {}
