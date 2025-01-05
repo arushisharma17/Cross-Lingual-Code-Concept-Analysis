@@ -84,7 +84,7 @@ maxfreq="${maxfreq:-15}"  # Default max frequency
 delfreq="${delfreq:-10000000}"  # Default delete frequency
 
 # Dynamically derive dataset name
-datasetname=$(echo "$inputPath" | sed 's/[\/]/_/g')  # Replace "/" with "_"
+datasetname=$(echo "$inputPath" | sed 's/[\/]/_/g' | sed 's/_$//') 
 modelname=$(echo "$model" | sed 's/[\/]/_/g')
 
 # Specify paths
