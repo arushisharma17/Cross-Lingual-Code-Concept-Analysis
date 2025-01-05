@@ -75,8 +75,8 @@ def label_clusters(clusters_data):
     generation_config = {
         "temperature": 0.3,
         "top_p": 0.4,
-        "top_k": 35,
-        "max_output_tokens": 200,
+        "top_k": 40,
+        "max_output_tokens": 300,
         "response_mime_type": "application/json",
     }
 
