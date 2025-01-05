@@ -83,7 +83,7 @@ def label_clusters(clusters_data):
     model = genai.GenerativeModel(
         model_name="gemini-1.5-flash",
         generation_config=generation_config,
-        system_instruction="You are a Java Software Developer experienced in analyzing code."
+        system_instruction="You are a C++ Software Developer experienced in analyzing code."
     )
 
     final_output = []

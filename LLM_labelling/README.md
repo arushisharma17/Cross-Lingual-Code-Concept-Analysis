@@ -5,6 +5,8 @@ TO run the labelling script, you need to have the following:
     1. Model directory with all layers having their encoder and decoder clusters
     2. Input file with encoder sentences - input.in
     3. Output file with decoder sentences - label.out
+    4. .env file with the API key for Gemini
+    5. Python version 3.9 or above
 
 Directory structure:
 
@@ -31,9 +33,14 @@ labelling/
                     decoder-clusters.txt
         input.in
         label.out
+    .env
 ```
 
 Command to run the labelling script:
+
+```
+pip install google-generativeai==0.8.3
+```
 
 ```bash
 python LLM_labelling/gemini_labelling_<language>.py --sentence-file <sentence_file> --model-dir <model_dir> --component <component> --start-layer <start_layer> --end-layer <end_layer>
