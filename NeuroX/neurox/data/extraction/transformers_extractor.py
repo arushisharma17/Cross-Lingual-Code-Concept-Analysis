@@ -11,8 +11,7 @@ Can also be invoked as a script as follows:
 
 import os
 os.environ['HF_HOME'] = './cache'
-from huggingface_hub import login
-login(token = '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')
+
 
 import argparse
 import sys
