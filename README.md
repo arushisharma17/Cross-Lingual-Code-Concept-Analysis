@@ -9,6 +9,8 @@ Write up forthcoming. In the mean time -- read `Full Demo.ipynb` for details.
 ```bash
 conda env create -f environment.yml
 conda activate neurox_pip
+pip install --upgrade torch==2.0.0
+pip install --upgrade transformers==4.30.0
 ```
 
 Install Rust:
@@ -66,14 +68,14 @@ Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to make trans
 Using awesome-align
 
 ```bash
-    python -u utils/mapping_awesomealign.py Data/CPP-Cuda/cpp-cuda.txt Data/CPP-Cuda/forward.align
+python -u utils/mapping_awesomealign.py Data/CPP-Cuda/cpp-cuda.txt Data/CPP-Cuda/forward.align
 ```
 Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to make mapping dictionary like Data/Java-CS/java-cs.txt
 
 ### Splitting the corpus into Encoder Decoder Pieces
 
 ```bash
-    python -u utils/split.py Data/CPP-Cuda/cpp-cuda.txt
+python -u utils/split.py Data/CPP-Cuda/cpp-cuda.txt
 ```
 
 Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to split into encoder decoder pieces like Data/Java-CS/java-cs.txt
@@ -89,7 +91,7 @@ export HF_HOME="./cache/"
 
 ```bash
 #dos2unix utils_qcri/activation_extraction_with_filtering_2.sh
-./utils_qcri/activation_extraction_with_filtering_2.sh --model Salesforce/codet5-small  --inputPath Data/CPP-Cuda/ --layer 3
+./utils_qcri/activation_extraction_with_filtering_2.sh --model Salesforce/codet5-base  --inputPath Data/CPP-Cuda/ --layer 0 --sentence_length 2048 --minfreq 0 --maxfreq 1500000 --delfreq 10000000
 ```
 
 Note: Change the inputPath to the corpus you want to run activation extraction for overlap experiment like Data/Java-CS/
@@ -98,7 +100,7 @@ Note: Change the inputPath to the corpus you want to run activation extraction f
 
 ```bash
 #dos2unix utils_qcri/activation_extraction_without_filtering_2.sh
-./utils_qcri/activation_extraction_without_filtering_2.sh --model Salesforce/codet5-small  --inputPath Data/CPP-Cuda --layer 3
+./utils_qcri/activation_extraction_without_filtering_2.sh --model Salesforce/codet5-base  --inputPath Data/CPP-Cuda --layer 0 --sentence_length 2048 
 ```
 
 Note: Change the inputPath to the corpus you want to run activation extraction for overlap experiment like Data/Java-CS/
@@ -107,14 +109,14 @@ Note: Change the inputPath to the corpus you want to run activation extraction f
 
 ```bash
 #dos2unix utils_qcri/clustering_2.sh
-./utils_qcri/clustering_2.sh --inputPath Experiments/Salesforce_codet5-small/Data_CPP-Cuda/layer3/extraction_without_filtering --clusters 500 --mode visualize
+./utils_qcri/clustering_2.sh --inputPath Experiments/Salesforce_codet5-base/Data_CPP-Cuda/layer0/extraction_without_filtering --clusters 500 --mode visualize
 ```
 
 ### Aligning Clusters
 
 ```bash
 #dos2unix utils_qcri/get_alignment_2.sh
-utils_qcri/get_alignment_2.sh --clusterDir Experiments/google-t5_t5-base/Data_CPP-Cuda/layer3/extraction_without_filtering/clustering --dictionary Data/CPP-Cuda/dictionary.json
+utils_qcri/get_alignment_2.sh --clusterDir Experiments/Salesforce_codet5-base/Data_CPP-Cuda/layer0/extraction_without_filtering/clustering --dictionary Data/CPP-Cuda/dictionary.json
 ```
 
 Note: Change the inputPath to the corpus you want to run clustering for like Experiments/google-t5_t5-base/Data_Java-CS/layer3/extraction_without_filtering
