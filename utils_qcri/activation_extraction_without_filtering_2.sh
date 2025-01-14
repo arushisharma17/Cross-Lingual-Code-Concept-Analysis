@@ -1,9 +1,5 @@
 #!/bin/bash -l
 
-# Initialize conda
-eval "$(conda shell.bash hook)"
-
-# Now activate the conda environment
 conda activate neurox_pip
 
 # Print usage instructions
@@ -92,7 +88,7 @@ encoder_input="input.in"
 decoder_input="label.out"
 NEUROX_PATH="NeuroX/scripts"
 
-datasetname=$(echo "$inputPath" | sed 's/[\/]/_/g' | sed 's/_$//')  
+datasetname=$(echo "$inputPath" | sed 's/[\/]/_/g')
 modelname=$(echo "$model" | sed 's/[\/]/_/g')
 outputDir="${customOutputDir:-Experiments/${modelname}/${datasetname}/layer${layer}/extraction_without_filtering}"
 
@@ -177,12 +173,6 @@ python -u "${scriptDir}/frequency_filter_data.py" \
     --maximum-frequency "$maxfreq" \
     --delete-frequency "$delfreq" \
     --output-file "$decoder_working_file" > "$outputDir/decoder_ff_log.txt" 2>&1
-
-# Add error checking
-if [ $? -ne 0 ]; then
-    echo "Error: Frequency filtering failed"
-    exit 1
-fi
 
 # Step 5: Extract vectors
 python -u "${scriptDir}/extract_data.py" \

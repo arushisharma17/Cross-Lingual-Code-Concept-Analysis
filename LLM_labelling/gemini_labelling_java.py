@@ -14,7 +14,6 @@ def read_java_in_file(file_path):
 
 def process_cluster_file(file_path, java_in_lines):
     clusters_data = defaultdict(lambda: {"tokens": set(), "Context Sentences": set()})
-    cluster_count = 0
     
     with open(file_path, 'r', encoding='utf-8') as f:
         for line in f:
@@ -31,40 +30,24 @@ def process_cluster_file(file_path, java_in_lines):
                     
                 token = parts[0].strip()
                 sentence_id = int(parts[2])
-                # The cluster ID is in the last part
                 cluster_id = parts[-1].strip()
                 
                 # Add data to cluster
                 clusters_data[cluster_id]["tokens"].add(token)
                 if 0 <= sentence_id < len(java_in_lines):
                     clusters_data[cluster_id]["Context Sentences"].add(java_in_lines[sentence_id])
-                
-                cluster_count = max(cluster_count, int(cluster_id) + 1)
                     
             except (IndexError, ValueError) as e:
                 print(f"Error processing line '{stripped_line}': {str(e)}")
                 continue
 
-    # Debug print
-    print(f"Total clusters found: {len(clusters_data)}")
-    print(f"Expected clusters: {cluster_count}")
-    print(f"First few cluster IDs: {sorted(list(clusters_data.keys()))[:10]}")
-    print(f"Last few cluster IDs: {sorted(list(clusters_data.keys()))[-10:]}")
-
     # Convert sets to lists for JSON serialization
     result = {}
-    for i in range(cluster_count):
-        cluster_id = str(i)
-        if cluster_id in clusters_data:
-            result[cluster_id] = {
-                "tokens": list(clusters_data[cluster_id]["tokens"]),
-                "Context Sentences": list(clusters_data[cluster_id]["Context Sentences"])
-            }
-        else:
-            result[cluster_id] = {
-                "tokens": [],
-                "Context Sentences": []
-            }
+    for cluster_id in clusters_data:
+        result[cluster_id] = {
+            "tokens": list(clusters_data[cluster_id]["tokens"]),
+            "Context Sentences": list(clusters_data[cluster_id]["Context Sentences"])
+        }
 
     return result
 
@@ -90,7 +73,7 @@ def label_clusters(clusters_data):
     max_retries = 10
     retry_delay = 2  # seconds
 
-    # Updated safety settings to use BLOCK_NONE instead of NONE
+    # Updated safety settings
     safety_settings = {
         HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
         HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
@@ -98,7 +81,13 @@ def label_clusters(clusters_data):
         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
     }
 
-    for index, (cluster_id, cluster_info) in enumerate(list(clusters_data.items())):
+    # Print total clusters to process
+    print(f"Processing {len(clusters_data)} clusters found in the file")
+    
+    # Only process clusters that exist in the data
+    for index, (cluster_id, cluster_info) in enumerate(clusters_data.items()):
+        print(f"Processing cluster {cluster_id} ({index + 1}/{len(clusters_data)})")
+        
         # Rate limiting
         if index > 0 and index % 2000 == 0:
             print("Pausing for 60 seconds due to rate limit...")

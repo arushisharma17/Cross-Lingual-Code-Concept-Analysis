@@ -1,5 +1,6 @@
 import sys
 import json
+import os
 
 # Check if the correct number of command line arguments is provided
 if len(sys.argv) != 8:
@@ -109,10 +110,26 @@ for source_cluster_number, source_words in clusters1.items():
             print (aligned_word_count, total_words_in_source_cluster)
             #input()
 
-# Print aligned clusters
-print("Aligned Clusters:", len (aligned_clusters))
+# Modify the final section to create a JSON structure
+alignment_results = {}
+for source_cluster, target_clusters in aligned_clusters.items():
+    if target_clusters:
+        alignment_results[str(source_cluster)] = list(target_clusters)
+
+# Create output filename based on input paths
+output_dir = os.path.dirname(cluster_file_path1)
+output_file = os.path.join(output_dir, "cluster_alignments.json")
+
+# Save alignments to JSON file
+with open(output_file, 'w') as f:
+    json.dump(alignment_results, f, indent=2)
+
+# Keep existing print statements for console output
+print("Aligned Clusters:", len(aligned_clusters))
 for source_cluster, target_clusters in aligned_clusters.items():
     if target_clusters:
         print(f"Source Cluster {source_cluster} is aligned to Target Clusters: {', '.join(map(str, target_clusters))}")
+
+print(f"\nAlignment results saved to: {output_file}")
 
     
