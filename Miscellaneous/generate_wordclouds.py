@@ -97,8 +97,8 @@ def create_split_wordclouds(layer: int) -> None:
     
     # Hardcoded paths
     base_path = Path("C:/Users/91917/Desktop/Research/Cross-Lingual-Code-Concept-Analysis")
-    results_file = base_path / f"LLM_labelling/t5/java_cs/layer{layer}/Alignments_with_LLM_labels_layer{layer}.json"
-    output_dir = base_path / f"LLM_labelling/t5/java_cs/layer{layer}/visualizations"
+    results_file = base_path / f"LLM_labelling/coderosetta/cpp_cuda/layer{layer}/Alignments_with_LLM_labels_layer{layer}.json"
+    output_dir = base_path / f"LLM_labelling/coderosetta/cpp_cuda/layer{layer}/visualizations"
     
     # Skip if results file doesn't exist
     if not results_file.exists():
@@ -136,7 +136,11 @@ def create_split_wordclouds(layer: int) -> None:
 if __name__ == "__main__":
     # Remove argparse
     print("Generating wordclouds for all layers (0-12)...")
-    for layer in range(13):  # 0 to 12 inclusive
+    for layer in range(7):  # 0 to 12 inclusive
+        print(f"\nProcessing layer {layer}")
+        create_split_wordclouds(layer)
+    
+    for layer in range(10,13):  # 10 to 12 inclusive
         print(f"\nProcessing layer {layer}")
         create_split_wordclouds(layer)
     
