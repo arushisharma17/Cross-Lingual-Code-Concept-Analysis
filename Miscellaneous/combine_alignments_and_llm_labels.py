@@ -14,14 +14,14 @@ def combine_alignments_with_labels(layer: int) -> None:
     base_path = Path("C:/Users/91917/Desktop/Research/Cross-Lingual-Code-Concept-Analysis")
     
     # Alignment file path
-    alignment_file = base_path / f"LLM_labelling/t5/java_cs/layer{layer}/cluster_alignments.json"
+    alignment_file = base_path / f"LLM_labelling/coderosetta/cpp_cuda/layer{layer}/cluster_alignments.json"
     
     # Encoder/Decoder labels paths
-    encoder_labels_file = base_path / f"LLM_labelling/t5/java_cs/layer{layer}/encoder_gemini_labels.json"
-    decoder_labels_file = base_path / f"LLM_labelling/t5/java_cs/layer{layer}/decoder_gemini_labels.json"
+    encoder_labels_file = base_path / f"LLM_labelling/coderosetta/cpp_cuda/layer{layer}/encoder_gemini_labels.json"
+    decoder_labels_file = base_path / f"LLM_labelling/coderosetta/cpp_cuda/layer{layer}/decoder_gemini_labels.json"
     
     # Output directory
-    output_dir = base_path / f"LLM_labelling/t5/java_cs/layer{layer}"
+    output_dir = base_path / f"LLM_labelling/coderosetta/cpp_cuda/layer{layer}"
     
     # Load files
     alignments = load_json(alignment_file)

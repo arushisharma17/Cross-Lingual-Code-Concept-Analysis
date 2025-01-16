@@ -1,6 +1,7 @@
 import sys
 import json
 import os
+from collections import defaultdict
 
 # Check if the correct number of command line arguments is provided
 if len(sys.argv) != 8:
@@ -87,13 +88,17 @@ update_clusters(cluster_file_path2, clusters2)
 
 
 # Check for alignment between source and target clusters
-aligned_clusters = {}
-for source_cluster_number, source_words in clusters1.items():
-    aligned_clusters[source_cluster_number] = set()
-    match_list = []
-    for target_cluster_number, target_words in clusters2.items():
+aligned_clusters = defaultdict(set)
+alignment_metrics = defaultdict(dict)  # New dict to store metrics
+
+for source_cluster_number in clusters1:
+    source_words = clusters1[source_cluster_number]
+    for target_cluster_number in clusters2:
+        target_words = clusters2[target_cluster_number]
         aligned_word_count = 0
         total_words_in_source_cluster = len(source_words)
+        match_list = []
+        
         for source_word in source_words:
             if source_word in dictionary:
                 for target_translation, translation_probability in dictionary[source_word]:
@@ -102,25 +107,36 @@ for source_cluster_number, source_words in clusters1.items():
                         match_tup = (source_word, target_translation)
                         match_list.append(match_tup)
                         break
-        if aligned_word_count / total_words_in_source_cluster > match_percentage and len(clusters1[source_cluster_number]) > no_types and len(clusters1[source_cluster_number])/len(clusters2[target_cluster_number]) > size_threshold:
+                        
+        actual_match_percentage = aligned_word_count / total_words_in_source_cluster if total_words_in_source_cluster > 0 else 0
+        
+        if actual_match_percentage > match_percentage and len(clusters1[source_cluster_number]) > no_types and len(clusters1[source_cluster_number])/len(clusters2[target_cluster_number]) > size_threshold:
             aligned_clusters[source_cluster_number].add(target_cluster_number)
-            print (set(match_list))
-            print ("Source Cluster", source_cluster_number, "Target Cluster", target_cluster_number)
-            print ("Source Cluster Size", len(clusters1[source_cluster_number]), "Target Cluster Size", len(clusters2[target_cluster_number]))
-            print (aligned_word_count, total_words_in_source_cluster)
-            #input()
+            # Store metrics when we find a valid alignment
+            if source_cluster_number not in alignment_metrics:
+                alignment_metrics[source_cluster_number] = {
+                    "match_percentage": actual_match_percentage,
+                    "source_cluster_size": len(source_words),
+                    "target_cluster_sizes": [],
+                    "aligned_word_count": aligned_word_count,
+                    "total_words": total_words_in_source_cluster,
+                    "size_threshold": size_threshold,
+                    "translation_threshold": 0.5
+                }
+            alignment_metrics[source_cluster_number]["target_cluster_sizes"].append(len(target_words))
 
-# Modify the final section to create a JSON structure
+# Create the final alignment results
 alignment_results = {}
 for source_cluster, target_clusters in aligned_clusters.items():
     if target_clusters:
-        alignment_results[str(source_cluster)] = list(target_clusters)
-
-# Create output filename based on input paths
-output_dir = os.path.dirname(cluster_file_path1)
-output_file = os.path.join(output_dir, "cluster_alignments.json")
+        alignment_results[str(source_cluster)] = {
+            "aligned_clusters": list(target_clusters),
+            "metrics": alignment_metrics[source_cluster]
+        }
 
 # Save alignments to JSON file
+output_dir = os.path.dirname(cluster_file_path1)
+output_file = os.path.join(output_dir, "cluster_alignments.json")
 with open(output_file, 'w') as f:
     json.dump(alignment_results, f, indent=2)
 
