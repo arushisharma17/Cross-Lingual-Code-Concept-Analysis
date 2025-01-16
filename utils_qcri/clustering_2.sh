@@ -18,12 +18,11 @@ usage() {
   exit 0
 }
 
-
-
+# Parse command-line arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
     --inputPath)
-      inputPath="$2"
+      basePath="$2"  # This will be the path without layer number
       shift
       shift
       ;;
@@ -52,7 +51,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-inputPath="${inputPath:-Experiments/google-t5_t5-base/Data_EN-DE/layer3/extraction_with_filtering}"
+# Construct the full input path with the layer number
+# Find the last occurrence of "extraction" in the path and insert layer before it
+inputPath="${basePath%/*}/layer${layer}/${basePath##*/}"
+
 clusters="${clusters:-500}"
 mode="${mode:-visualize}"
 layerName=$(basename $(dirname "$inputPath"))
