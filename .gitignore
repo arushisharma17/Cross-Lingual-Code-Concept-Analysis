@@ -11,3 +11,4 @@ cache/
 LLM_labelling/coderosetta/
 LLM_labelling/t5/
 *.env
+venv/

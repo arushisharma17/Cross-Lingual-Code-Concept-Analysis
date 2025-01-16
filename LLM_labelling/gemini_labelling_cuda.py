@@ -226,6 +226,7 @@ def main():
     parser = argparse.ArgumentParser(description="Assign labels to clusters using Gemini API")
     parser.add_argument("--sentence-file", required=True, help="Path to the sentence file")
     parser.add_argument("--model-dir", required=True, help="Path to the model directory containing layer folders")
+    parser.add_argument("--dir-extension", required=True, help="Path to the cluster files")
     parser.add_argument("--component", choices=['encoder', 'decoder'], required=True, help="Whether to process encoder or decoder clusters")
     parser.add_argument("--start-layer", type=int, required=True, help="Layer number to start from")
     parser.add_argument("--end-layer", type=int, required=True, help="Layer number to end at")
@@ -245,7 +246,7 @@ def main():
 
     for layer_dir in layer_dirs:
         print(f"\nProcessing {layer_dir}")
-        layer_path = os.path.join(args.model_dir, layer_dir,)
+        layer_path = os.path.join(args.model_dir, layer_dir,args.dir_extension)
 
         # Look for component-specific cluster files directly in layer directory
         cluster_files = [f for f in os.listdir(layer_path) 
@@ -258,11 +259,6 @@ def main():
             process_single_cluster_file(layer_path, cluster_files[0], java_in_lines, args.component)
         else:
             print(f"No matching {args.component} cluster files found in {layer_path}")
-        
-        # Pause between layers
-        if layer_dir != layer_dirs[-1]:
-            print("Pausing for 60 seconds before next layer...")
-            time.sleep(60)
 
 def process_single_cluster_file(directory, filename, java_in_lines, component):
     """Helper function to process a single cluster file and save its results"""

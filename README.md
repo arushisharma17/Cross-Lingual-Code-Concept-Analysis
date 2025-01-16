@@ -109,8 +109,11 @@ Note: Change the inputPath to the corpus you want to run activation extraction f
 
 ```bash
 #dos2unix utils_qcri/clustering_2.sh
-./utils_qcri/clustering_2.sh --inputPath Experiments/Salesforce_codet5-base/Data_CPP-Cuda/layer0/extraction_without_filtering --clusters 500 --mode visualize
+./utils_qcri/clustering_2.sh --inputPath Experiments/Salesforce_codet5-base/Data_CPP-Cuda/extraction_without_filtering --layer 0 --clusters 500 --mode visualize
 ```
+Note: Change the inputPath to the corpus you want to run clustering for like Experiments/google-t5_t5-base/Data_Java-CS/layer3/extraction_without_filtering
+
+Side note: The input path doesnt show the layerdir. We add it in the code and hence need the layer number to be passed.
 
 ### Aligning Clusters
 
@@ -120,3 +123,69 @@ utils_qcri/get_alignment_2.sh --clusterDir Experiments/Salesforce_codet5-base/Da
 ```
 
 Note: Change the inputPath to the corpus you want to run clustering for like Experiments/google-t5_t5-base/Data_Java-CS/layer3/extraction_without_filtering
+
+Side note: The input path doesnt show the layerdir. We add it in the code and hence need the layer number to be passed.
+
+### Labelling Clusters
+
+Exit wsl for installing google-generativeai as it is not available in python3.8 which is the version of python in the conda environment.
+
+```bash
+conda deactivate neurox_pip
+exit
+```
+Add a .env file in the LLM_labelling folder with the following content:
+```
+GEMINI_API_KEY=your_gemini_api_key
+```
+Note: Use paid gemini api key. If not then chnage the code to pause after 15 clusters and run it in loop.
+
+Install google-generativeai:
+
+```bash
+python -m venv venv
+source venv/bin/activate # or venv\Scripts\activate on Windows
+pip install google-generativeai==0.8.3
+```
+
+```bash
+python LLM_labelling/gemini_labelling_cpp.py --sentence-file Data/CPP-Cuda/input.in  --model-dir Experiments/Salesforce_codet5-base/Data_CPP-Cuda --dir-extension extraction_without_filtering/clustering --component encoder --start-layer 0 --end-layer 12
+```
+
+```bash
+python LLM_labelling/gemini_labelling_cuda.py --sentence-file Data/CPP-Cuda/label.out  --model-dir Experiments/Salesforce_codet5-base/Data_CPP-Cuda --dir-extension extraction_without_filtering/clustering --component decoder --start-layer 0 --end-layer 12
+```
+
+Note: Change the input.in to the corpus you want to label like Data/Java-CS/input.in, change python script to the language you want to label like gemini_labelling_cpp.py, gemini_labelling_cuda.py, gemini_labelling_java.py, gemini_labelling_csharp.py
+
+### Combining Alignments and LLM Labels
+
+```bash
+python code/combine_alignments_and_llm_labels.py --model-dir Experiments/Salesforce_codet5-base/Data_CPP-Cuda --dir-extension extraction_without_filtering/clustering --start-layer 0 --end-layer 12
+```
+
+Note: Change the base-dir to the directory you want to combine alignments and LLM labels for like Experiments/Salesforce_codet5-base/Data_CPP-Cuda
+
+### Top Semantic Tags
+
+Finds the top 20 semantic tags across all layers. So it is a good idea to run this after LLM labels for all layers.
+
+```bash
+python code/topSemantic.py --model-dir Experiments/Salesforce_codet5-base/Data_CPP-Cuda --dir-extension extraction_without_filtering/clustering
+```
+
+Note: Change the model-dir to the directory you want to analyze semantic tags for like Experiments/Salesforce_codet5-base/Data_CPP-Cuda
+
+### Visualizing Clusters
+
+```bash
+source venv/bin/activate # or venv\Scripts\activate on Windows
+pip install -r Visualize/requirements.txt
+```
+
+```bash
+streamlit run Visualize/app.py --model-dir Experiments/Salesforce_codet5-base/Data_CPP-Cuda --dir-extension extraction_without_filtering/clustering --encoder-file Data/CPP-Cuda/input.in --decoder-file Data/CPP-Cuda/label.out
+```
+
+Note: Change the model-dir to the directory you want to visualize clusters for like Experiments/Salesforce_codet5-base/Data_CPP-Cuda. Chnage the sentence-file to the corpus you want to visualize like Data/CPP-Cuda/input.in, Data/CPP-Cuda/label.out
+
