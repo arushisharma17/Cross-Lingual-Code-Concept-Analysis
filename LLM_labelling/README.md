@@ -47,9 +47,9 @@ python LLM_labelling/gemini_labelling_<language>.py --sentence-file <sentence_fi
 ```
 Example for Java encoder:
 ```bash
-python LLM_labelling/gemini_labelling_java.py --sentence-file LLM_labelling/t5/java_cs/input.in  --model-dir LLM_labelling/t5/java_cs --component encoder --start-layer 0 --end-layer 12
+python LLM_labelling/gemini_labelling_cpp.py --sentence-file LLM_labelling/t5/cpp_cuda/input.in  --model-dir LLM_labelling/t5/cpp_cuda --component encoder --start-layer 0 --end-layer 12
 ```
 Example for C# decoder:
 ```bash
-python LLM_labelling/gemini_labelling_csharp.py --sentence-file LLM_labelling/t5/java_cs/label.out  --model-dir LLM_labelling/t5/java_cs --component decoder --start-layer 0 --end-layer 12
+python LLM_labelling/gemini_labelling_cuda.py --sentence-file LLM_labelling/t5/cpp_cuda/label.out  --model-dir LLM_labelling/t5/cpp_cuda --component decoder --start-layer 0 --end-layer 12
 ```
