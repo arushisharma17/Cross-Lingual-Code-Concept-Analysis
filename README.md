@@ -40,7 +40,7 @@ python -u tree-sitter/tokenize_corpus.py Data/CPP-Cuda/cpp-cuda.txt cpp cuda --l
 ```
 Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to tokenize like Data/Java-CS/java-cs.txt
 
-### Collecting Alignments
+### Word Alignment using awesome align tool
 
 #### Using awesome-align
 
