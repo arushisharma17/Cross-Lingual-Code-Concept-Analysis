@@ -55,6 +55,8 @@ awesome-align \
 
 Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to make alignment like Data/Java-CS/java-cs.txt
 
+The output files will contain alignments in the pharoah (i-j) format. These are then used to create a translation dictionary. 
+
 ### Create Translation Dictionary
 
 ```bash
