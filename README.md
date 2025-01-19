@@ -21,10 +21,11 @@ Download the latest version of Rust: https://rustup.rs/
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Clone ConceptX:
+Clone ConceptX and Tree Sitter Cuda:
 
 ```bash
 git clone https://github.com/hsajjad/ConceptX
+git clone https://github.com/tree-sitter-grammars/tree-sitter-cuda.git tree-sitter/tree-sitter-cuda
 ```
 
 ## Run Through for CPP-Cuda
