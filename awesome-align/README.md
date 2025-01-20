@@ -45,9 +45,9 @@ If there is parallel data available, you can fine-tune embedding models on that 
 Here is an example of fine-tuning mBERT that balances well between efficiency and effectiveness:
 
 ```bash
-TRAIN_FILE=/path/to/train/file
-EVAL_FILE=/path/to/eval/file
-OUTPUT_DIR=/path/to/output/directory
+TRAIN_FILE=awesome-align/data/train.txt
+EVAL_FILE=awesome-align/data/eval.txt
+OUTPUT_DIR=awesome-align/output_model
 
 CUDA_VISIBLE_DEVICES=0 awesome-train \
     --output_dir=$OUTPUT_DIR \
