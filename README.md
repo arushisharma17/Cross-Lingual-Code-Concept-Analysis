@@ -44,13 +44,24 @@ Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to tokenize l
 
 #### Using awesome-align
 
+Install awesome-align:
+
+```bash
+cd awesome-align
+pip install -r requirements.txt
+python setup.py install
+cd ..
+```
+
+Run awesome-align:
+
 ```bash
 awesome-align \
-  --model_name_or_path bert-base-multilingual-cased \
+  --model_name_or_path microsoft/codebert-base \
   --data_file Data/CPP-Cuda/tree_sitter_tokenized_leaf.txt \
   --output_file Data/CPP-Cuda/forward.align \
   --extraction softmax \
-  --batch_size 32
+  --max_length 512
 ```
 
 Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to make alignment like Data/Java-CS/java-cs.txt
@@ -61,7 +72,7 @@ The output files will contain alignments in the pharoah (i-j) format. These are 
 
 ```bash
 python -u utils/wordlevel_dict_text.py Data/CPP-Cuda/cpp-cuda.txt Data/CPP-Cuda/forward.align
-python -u utils/wordlevel_dict.py Data/CPP-Cuda/cpp-cuda.txt Data/CPP-Cuda/forward.align
+python -u utils/wordlevel_dict.py Data/CPP-Cuda/cpp-cuda.txt Data/CPP-Cuda/forward.align 
 ```
 
 Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to make translation dictionary like Data/Java-CS/java-cs.txt
@@ -122,9 +133,8 @@ Side note: The input path doesnt show the layerdir. We add it in the code and he
 
 ```bash
 #dos2unix utils_qcri/get_alignment_2.sh
-utils_qcri/get_alignment_2.sh --clusterDir Experiments/Salesforce_codet5-base/Data_CPP-Cuda/layer0/extraction_without_filtering/clustering --dictionary Data/CPP-Cuda/dictionary.json
+utils_qcri/get_alignment_2.sh --inputPath Experiments/Salesforce_codet5-base/Data_CPP-Cuda/extraction_without_filtering --layer 0 --dictionary Data/CPP-Cuda/dictionary.json
 ```
-
 Note: Change the inputPath to the corpus you want to run clustering for like Experiments/google-t5_t5-base/Data_Java-CS/layer3/extraction_without_filtering
 
 Side note: The input path doesnt show the layerdir. We add it in the code and hence need the layer number to be passed.
