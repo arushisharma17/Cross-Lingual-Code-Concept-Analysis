@@ -22,20 +22,13 @@ import itertools
 import os
 import shutil
 import tempfile
-
+import awesome_align.modeling as modeling
 import numpy as np
 import torch
-from tqdm import trange
+from tqdm import tqdm
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, IterableDataset
-
-from awesome_align import modeling
-from awesome_align.configuration_bert import BertConfig
-from awesome_align.modeling import BertForMaskedLM
-from awesome_align.tokenization_bert import BertTokenizer
-from awesome_align.tokenization_utils import PreTrainedTokenizer
-from awesome_align.modeling_utils import PreTrainedModel
-
+from transformers import RobertaTokenizerFast, RobertaConfig, RobertaForMaskedLM, PreTrainedTokenizer, PreTrainedModel
 
 def set_seed(args):
     if args.seed >= 0:
@@ -45,13 +38,15 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 class LineByLineTextDataset(IterableDataset):
-    def __init__(self, tokenizer: PreTrainedTokenizer, file_path, offsets=None):
+    def __init__(self, tokenizer: PreTrainedTokenizer, file_path, max_length=2000, offsets=None):
         assert os.path.isfile(file_path)
         print('Loading the dataset...')
         self.examples = []
         self.tokenizer = tokenizer
         self.file_path = file_path
         self.offsets = offsets
+        self.max_length = max_length
+        self.is_roberta = isinstance(tokenizer, RobertaTokenizerFast)
 
     def process_line(self, worker_id, line):
         if len(line) == 0 or line.isspace() or not len(line.split(' ||| ')) == 2:
@@ -62,20 +57,44 @@ class LineByLineTextDataset(IterableDataset):
             return None
     
         sent_src, sent_tgt = src.strip().split(), tgt.strip().split()
-        token_src, token_tgt = [self.tokenizer.tokenize(word) for word in sent_src], [self.tokenizer.tokenize(word) for word in sent_tgt]
-        wid_src, wid_tgt = [self.tokenizer.convert_tokens_to_ids(x) for x in token_src], [self.tokenizer.convert_tokens_to_ids(x) for x in token_tgt]
+        
+        # Handle RoBERTa tokenization differently
+        if self.is_roberta:
+            # Direct tokenization for RoBERTa
+            encoded_src = self.tokenizer(
+                sent_src,
+                is_split_into_words=True,
+                add_special_tokens=True,
+                return_tensors='pt',
+                max_length=self.max_length,
+                truncation=True,
+                padding=True
+            )
+            encoded_tgt = self.tokenizer(
+                sent_tgt,
+                is_split_into_words=True,
+                add_special_tokens=True,
+                return_tensors='pt',
+                max_length=self.max_length,
+                truncation=True,
+                padding=True
+            )
+            
+            ids_src = encoded_src['input_ids']
+            ids_tgt = encoded_tgt['input_ids']
+            
+            # Get word IDs for alignment
+            bpe2word_map_src = encoded_src.word_ids()
+            bpe2word_map_tgt = encoded_tgt.word_ids()
+            
+            # Filter out None values and adjust indexing
+            bpe2word_map_src = [i if i is not None else -1 for i in bpe2word_map_src]
+            bpe2word_map_tgt = [i if i is not None else -1 for i in bpe2word_map_tgt]
 
-        ids_src, ids_tgt = self.tokenizer.prepare_for_model(list(itertools.chain(*wid_src)), return_tensors='pt', max_length=self.tokenizer.max_len)['input_ids'], self.tokenizer.prepare_for_model(list(itertools.chain(*wid_tgt)), return_tensors='pt', max_length=self.tokenizer.max_len)['input_ids']
-        if len(ids_src[0]) == 2 or len(ids_tgt[0]) == 2:
+        if ids_src.shape[1] <= 2 or ids_tgt.shape[1] <= 2:
             return None
 
-        bpe2word_map_src = []
-        for i, word_list in enumerate(token_src):
-            bpe2word_map_src += [i for x in word_list]
-        bpe2word_map_tgt = []
-        for i, word_list in enumerate(token_tgt):
-            bpe2word_map_tgt += [i for x in word_list]
-        return (worker_id, ids_src[0], ids_tgt[0], bpe2word_map_src, bpe2word_map_tgt, sent_src, sent_tgt) 
+        return (worker_id, ids_src[0], ids_tgt[0], bpe2word_map_src, bpe2word_map_tgt, sent_src, sent_tgt)
 
     def __iter__(self):
         if self.offsets is not None:
@@ -145,7 +164,6 @@ def merge_files(writers):
 
 
 def word_align(args, model: PreTrainedModel, tokenizer: PreTrainedTokenizer):
-
     def collate(examples):
         worker_ids, ids_src, ids_tgt, bpe2word_map_src, bpe2word_map_tgt, sents_src, sents_tgt = zip(*examples)
         ids_src = pad_sequence(ids_src, batch_first=True, padding_value=tokenizer.pad_token_id)
@@ -153,64 +171,70 @@ def word_align(args, model: PreTrainedModel, tokenizer: PreTrainedTokenizer):
         return worker_ids, ids_src, ids_tgt, bpe2word_map_src, bpe2word_map_tgt, sents_src, sents_tgt
 
     offsets = find_offsets(args.data_file, args.num_workers)
-    dataset = LineByLineTextDataset(tokenizer, file_path=args.data_file, offsets=offsets)
-    dataloader = DataLoader(
-        dataset, batch_size=args.batch_size, collate_fn=collate, num_workers=args.num_workers
+    dataset = LineByLineTextDataset(
+        tokenizer, 
+        file_path=args.data_file, 
+        max_length=args.max_length,
+        offsets=offsets
     )
+    dataloader = DataLoader(dataset, batch_size=1, collate_fn=collate, num_workers=args.num_workers)
 
-    model.to(args.device)
+    if args.output_file is not None:
+        outf = open(args.output_file, 'w', encoding='utf-8')
+        writers = [outf]  # Initialize writers list with the output file
+
     model.eval()
-    tqdm_iterator = trange(0, desc="Extracting")
-
-    writers = open_writer_list(args.output_file, args.num_workers) 
-    if args.output_prob_file is not None:
-        prob_writers = open_writer_list(args.output_prob_file, args.num_workers)
-    if args.output_word_file is not None:
-        word_writers = open_writer_list(args.output_word_file, args.num_workers)
-
-    for batch in dataloader:
+    for batch in tqdm(dataloader, desc="Extracting"):
         with torch.no_grad():
             worker_ids, ids_src, ids_tgt, bpe2word_map_src, bpe2word_map_tgt, sents_src, sents_tgt = batch
-            word_aligns_list = model.get_aligned_word(ids_src, ids_tgt, bpe2word_map_src, bpe2word_map_tgt, args.device, 0, 0, align_layer=args.align_layer, extraction=args.extraction, softmax_threshold=args.softmax_threshold, test=True, output_prob=(args.output_prob_file is not None))
-            for worker_id, word_aligns, sent_src, sent_tgt in zip(worker_ids, word_aligns_list, sents_src, sents_tgt):
-                output_str = []
-                if args.output_prob_file is not None:
-                    output_prob_str = []
-                if args.output_word_file is not None:
-                    output_word_str = []
-                for word_align in word_aligns:
-                    if word_align[0] != -1:
-                        output_str.append(f'{word_align[0]}-{word_align[1]}')
-                        if args.output_prob_file is not None:
-                            output_prob_str.append(f'{word_aligns[word_align]}')
-                        if args.output_word_file is not None:
-                            output_word_str.append(f'{sent_src[word_align[0]]}<sep>{sent_tgt[word_align[1]]}')
-                writers[worker_id].write(' '.join(output_str)+'\n')
-                if args.output_prob_file is not None:
-                    prob_writers[worker_id].write(' '.join(output_prob_str)+'\n')
-                if args.output_word_file is not None:
-                    word_writers[worker_id].write(' '.join(output_word_str)+'\n')
-            tqdm_iterator.update(len(ids_src))
+            word_aligns = model.get_aligned_word(
+                ids_src, ids_tgt,
+                bpe2word_map_src[0], bpe2word_map_tgt[0],
+                args.device,
+                align_layer=args.align_layer,
+                extraction=args.extraction,
+                softmax_threshold=args.softmax_threshold,
+                test=True,
+                output_prob=args.output_prob_file is not None
+            )
+            # Collect all alignments for the current sentence
+            alignments = [f"{src_idx}-{tgt_idx}" for src_idx, tgt_idx, _ in word_aligns]
+            # Remove duplicate alignments
+            unique_alignments = list(set(alignments))
+            # Write all unique alignments for the current sentence on a single line
+            writers[0].write(" ".join(unique_alignments) + "\n")
 
-    merge_files(writers)
-    if args.output_prob_file is not None:
-        merge_files(prob_writers)
-    if args.output_word_file is not None:
-        merge_files(word_writers)
+    # Ensure writers is defined before using it
+    if 'writers' in locals():
+        merge_files(writers)
+
+    if args.output_file is not None:
+        outf.close()
+        print(f"\nSuccessfully written alignments to {args.output_file}")
 
 
 def main():
     parser = argparse.ArgumentParser()
-
+    
     # Required parameters
     parser.add_argument(
-        "--data_file", default=None, type=str, required=True, help="The input data file (a text file)."
+        "--data_file", type=str, required=True, help="The input data file (a parallel corpus)."
     )
     parser.add_argument(
-        "--output_file",
+        "--output_file", type=str, required=True, help="The output file (word alignments)."
+    )
+    parser.add_argument(
+        "--model_type",
         type=str,
-        required=True,
-        help="The output file."
+        default="bert",
+        choices=["bert", "codebert"],
+        help="Type of model to use (bert or codebert)",
+    )
+    parser.add_argument(
+        "--model_name_or_path",
+        default=None,
+        type=str,
+        help="Path to pretrained model or model identifier from huggingface.co/models",
     )
     parser.add_argument("--align_layer", type=int, default=8, help="layer for alignment extraction")
     parser.add_argument(
@@ -224,12 +248,6 @@ def main():
     )
     parser.add_argument(
         "--output_word_file", default=None, type=str, help='The output word file.'
-    )
-    parser.add_argument(
-        "--model_name_or_path",
-        default=None,
-        type=str,
-        help="The model checkpoint for weights initialization. Leave None if you want to train a model from scratch.",
     )
     parser.add_argument(
         "--config_name",
@@ -253,43 +271,59 @@ def main():
     )
     parser.add_argument("--no_cuda", action="store_true", help="Avoid using CUDA when available")
     parser.add_argument("--num_workers", type=int, default=4, help="Number of workers for data loading")
+    parser.add_argument(
+        "--max_length",
+        default=2048,
+        type=int,
+        help="Maximum sequence length"
+    )
+
     args = parser.parse_args()
-    device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-    args.device = device
-
-    # Set seed
-    set_seed(args)
-    config_class, model_class, tokenizer_class = BertConfig, BertForMaskedLM, BertTokenizer
-    if args.config_name:
-        config = config_class.from_pretrained(args.config_name, cache_dir=args.cache_dir)
-    elif args.model_name_or_path:
-        config = config_class.from_pretrained(args.model_name_or_path, cache_dir=args.cache_dir)
-    else:
-        config = config_class()
-
-    if args.tokenizer_name:
-        tokenizer = tokenizer_class.from_pretrained(args.tokenizer_name, cache_dir=args.cache_dir)
-    elif args.model_name_or_path:
-        tokenizer = tokenizer_class.from_pretrained(args.model_name_or_path, cache_dir=args.cache_dir)
-    else:
-        raise ValueError(
-            "You are instantiating a new {} tokenizer. This is not supported, but you can do it from another script, save it,"
-            "and load it from here, using --tokenizer_name".format(tokenizer_class.__name__)
+    
+    # Handle model type specific configurations
+    if "roberta" in args.model_name_or_path or "codebert" in args.model_name_or_path:
+        config_class = RobertaConfig
+        model_class = RobertaForMaskedLM
+        tokenizer_class = RobertaTokenizerFast
+        
+        if args.model_name_or_path is None:
+            args.model_name_or_path = "microsoft/codebert-base"
+            
+        tokenizer = RobertaTokenizerFast.from_pretrained(
+            args.model_name_or_path,
+            do_lower_case=False,
+            add_prefix_space=True,
+            cache_dir=args.cache_dir
         )
+        
+        model = RobertaForMaskedLM.from_pretrained(
+            args.model_name_or_path,
+            cache_dir=args.cache_dir
+        )
+        
+        # Add BERT's get_aligned_word method to RobertaForMaskedLM
+        from awesome_align.modeling import BertForMaskedLM
+        RobertaForMaskedLM.get_aligned_word = BertForMaskedLM.get_aligned_word
+        model.get_aligned_word = RobertaForMaskedLM.get_aligned_word.__get__(model, RobertaForMaskedLM)
+        
+        # Update model constants for RoBERTa/CodeBERT
+        modeling.PAD_ID = tokenizer.pad_token_id
+        modeling.CLS_ID = tokenizer.bos_token_id  # RoBERTa uses <s> instead of [CLS]
+        modeling.SEP_ID = tokenizer.eos_token_id  # RoBERTa uses </s> instead of [SEP]
 
+    # Update model constants
     modeling.PAD_ID = tokenizer.pad_token_id
     modeling.CLS_ID = tokenizer.cls_token_id
     modeling.SEP_ID = tokenizer.sep_token_id
 
-    if args.model_name_or_path:
-        model = model_class.from_pretrained(
-            args.model_name_or_path,
-            from_tf=bool(".ckpt" in args.model_name_or_path),
-            config=config,
-            cache_dir=args.cache_dir,
-        )
-    else:
-        model = model_class(config=config)
+    # Update cache handling
+    if args.cache_dir is None:
+        args.cache_dir = os.path.join("cache", args.model_type)
+    os.makedirs(args.cache_dir, exist_ok=True)
+
+    device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
+    args.device = device
+    model.to(device)
 
     word_align(args, model, tokenizer)
 
