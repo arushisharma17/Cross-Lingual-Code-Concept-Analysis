@@ -22,26 +22,13 @@ import itertools
 import os
 import shutil
 import tempfile
-
+import awesome_align.modeling as modeling
 import numpy as np
 import torch
 from tqdm import tqdm
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, IterableDataset
-from transformers import AutoTokenizer, AutoModelForMaskedLM, AutoConfig
-from transformers import RobertaForMaskedLM
-from awesome_align import modeling
-from awesome_align.configuration_bert import BertConfig
-from awesome_align.modeling import BertForMaskedLM
-from awesome_align.tokenization_bert import BertTokenizer
-from awesome_align.tokenization_utils import PreTrainedTokenizer
-from awesome_align.modeling_utils import PreTrainedModel
-from transformers import RobertaTokenizerFast
-from awesome_align import modeling
-from awesome_align.configuration_bert import BertConfig
-from awesome_align.modeling import BertForMaskedLM
-from transformers import RobertaConfig
-from transformers import RobertaTokenizer
+from transformers import RobertaTokenizerFast, RobertaConfig, RobertaForMaskedLM, PreTrainedTokenizer, PreTrainedModel
 
 def set_seed(args):
     if args.seed >= 0:
@@ -103,33 +90,6 @@ class LineByLineTextDataset(IterableDataset):
             # Filter out None values and adjust indexing
             bpe2word_map_src = [i if i is not None else -1 for i in bpe2word_map_src]
             bpe2word_map_tgt = [i if i is not None else -1 for i in bpe2word_map_tgt]
-            
-        else:
-            # Original BERT tokenization logic
-            token_src = [self.tokenizer.tokenize(word) for word in sent_src]
-            token_tgt = [self.tokenizer.tokenize(word) for word in sent_tgt]
-            wid_src = [self.tokenizer.convert_tokens_to_ids(x) for x in token_src]
-            wid_tgt = [self.tokenizer.convert_tokens_to_ids(x) for x in token_tgt]
-
-            ids_src = self.tokenizer.prepare_for_model(
-                list(itertools.chain(*wid_src)), 
-                return_tensors='pt', 
-                max_length=self.max_length,
-                truncation=True
-            )['input_ids']
-            ids_tgt = self.tokenizer.prepare_for_model(
-                list(itertools.chain(*wid_tgt)), 
-                return_tensors='pt', 
-                max_length=self.max_length,
-                truncation=True
-            )['input_ids']
-
-            bpe2word_map_src = []
-            for i, word_list in enumerate(token_src):
-                bpe2word_map_src += [i for _ in word_list]
-            bpe2word_map_tgt = []
-            for i, word_list in enumerate(token_tgt):
-                bpe2word_map_tgt += [i for _ in word_list]
 
         if ids_src.shape[1] <= 2 or ids_tgt.shape[1] <= 2:
             return None
@@ -324,60 +284,32 @@ def main():
     if "roberta" in args.model_name_or_path or "codebert" in args.model_name_or_path:
         config_class = RobertaConfig
         model_class = RobertaForMaskedLM
-        tokenizer_class = RobertaTokenizer
+        tokenizer_class = RobertaTokenizerFast
         
         if args.model_name_or_path is None:
             args.model_name_or_path = "microsoft/codebert-base"
             
-        tokenizer = AutoTokenizer.from_pretrained(
+        tokenizer = RobertaTokenizerFast.from_pretrained(
             args.model_name_or_path,
             do_lower_case=False,
             add_prefix_space=True,
             cache_dir=args.cache_dir
         )
         
-        model = AutoModelForMaskedLM.from_pretrained(
+        model = RobertaForMaskedLM.from_pretrained(
             args.model_name_or_path,
             cache_dir=args.cache_dir
         )
         
-        # Add alignment method to model instance
-        model.get_aligned_word = BertForMaskedLM.get_aligned_word.__get__(model, AutoModelForMaskedLM)
+        # Add BERT's get_aligned_word method to RobertaForMaskedLM
+        from awesome_align.modeling import BertForMaskedLM
+        RobertaForMaskedLM.get_aligned_word = BertForMaskedLM.get_aligned_word
+        model.get_aligned_word = RobertaForMaskedLM.get_aligned_word.__get__(model, RobertaForMaskedLM)
         
         # Update model constants for RoBERTa/CodeBERT
         modeling.PAD_ID = tokenizer.pad_token_id
         modeling.CLS_ID = tokenizer.bos_token_id  # RoBERTa uses <s> instead of [CLS]
         modeling.SEP_ID = tokenizer.eos_token_id  # RoBERTa uses </s> instead of [SEP]
-        
-    else:
-        # Original BERT handling
-        config_class = BertConfig
-        model_class = BertForMaskedLM
-        tokenizer_class = BertTokenizer
-        
-        if args.config_name:
-            config = config_class.from_pretrained(args.config_name, cache_dir=args.cache_dir)
-        elif args.model_name_or_path:
-            config = config_class.from_pretrained(args.model_name_or_path, cache_dir=args.cache_dir)
-        else:
-            config = config_class()
-
-        if args.tokenizer_name:
-            tokenizer = tokenizer_class.from_pretrained(args.tokenizer_name, cache_dir=args.cache_dir)
-        elif args.model_name_or_path:
-            tokenizer = tokenizer_class.from_pretrained(args.model_name_or_path, cache_dir=args.cache_dir)
-        else:
-            raise ValueError(
-                "You are instantiating a new {} tokenizer. This is not supported.".format(
-                    tokenizer_class.__name__
-                )
-            )
-            
-        model = model_class.from_pretrained(
-            args.model_name_or_path,
-            config=config,
-            cache_dir=args.cache_dir
-        )
 
     # Update model constants
     modeling.PAD_ID = tokenizer.pad_token_id
