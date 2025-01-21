@@ -1,4 +1,4 @@
-﻿# coding=utf-8
+# coding=utf-8
 # Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
 # Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
 # Modifications copyright (C) 2020, Zi-Yi Dou
@@ -33,11 +33,7 @@ from tqdm import tqdm, trange
 
 from awesome_align import modeling
 from awesome_align.train_utils import _sorted_checkpoints, _rotate_checkpoints, WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup
-from awesome_align.configuration_bert import BertConfig
-from awesome_align.modeling import BertForMaskedLM
-from awesome_align.tokenization_bert import BertTokenizer
-from awesome_align.tokenization_utils import PreTrainedTokenizer
-from awesome_align.modeling_utils import PreTrainedModel
+from transformers import RobertaTokenizerFast, RobertaConfig, RobertaForMaskedLM, PreTrainedTokenizer, PreTrainedModel
 
 
 
@@ -46,7 +42,7 @@ logger = logging.getLogger(__name__)
 import itertools
 
 class LineByLineTextDataset(Dataset):
-    def __init__(self, tokenizer: PreTrainedTokenizer, args, file_path, gold_path):
+    def __init__(self, tokenizer: PreTrainedTokenizer, args, file_path, gold_path=None):
         assert os.path.isfile(file_path)
         logger.info("Creating features from dataset file at %s", file_path)
 
@@ -82,7 +78,7 @@ class LineByLineTextDataset(Dataset):
                     token_src, token_tgt = [tokenizer.tokenize(word) for word in sent_src], [tokenizer.tokenize(word) for word in sent_tgt]
                     wid_src, wid_tgt = [tokenizer.convert_tokens_to_ids(x) for x in token_src], [tokenizer.convert_tokens_to_ids(x) for x in token_tgt]
 
-                    ids_src, ids_tgt = tokenizer.prepare_for_model(list(itertools.chain(*wid_src)), return_tensors='pt', max_length=tokenizer.max_len)['input_ids'], tokenizer.prepare_for_model(list(itertools.chain(*wid_tgt)), return_tensors='pt', max_length=tokenizer.max_len)['input_ids']
+                    ids_src, ids_tgt = tokenizer.prepare_for_model(list(itertools.chain(*wid_src)), return_tensors='pt', max_length=tokenizer.model_max_length)['input_ids'], tokenizer.prepare_for_model(list(itertools.chain(*wid_tgt)), return_tensors='pt', max_length=tokenizer.model_max_length)['input_ids']
                     if len(ids_src[0]) == 2 or len(ids_tgt[0]) == 2:
                         logger.info("Skipping instance %s", line)
                         continue
@@ -641,7 +637,7 @@ def main():
     )
     parser.add_argument(
         "--model_name_or_path",
-        default=None,
+        default="microsoft/codebert-base",
         type=str,
         help="The model checkpoint for weights initialization. Leave None if you want to train a model from scratch.",
     )
@@ -650,13 +646,13 @@ def main():
     )
     parser.add_argument(
         "--config_name",
-        default=None,
+        default="microsoft/codebert-base",
         type=str,
         help="Optional pretrained config name or path if not the same as model_name_or_path. If both are None, initialize a new config.",
     )
     parser.add_argument(
         "--tokenizer_name",
-        default=None,
+        default="microsoft/codebert-base",
         type=str,
         help="Optional pretrained tokenizer name or path if not the same as model_name_or_path. If both are None, initialize a new tokenizer.",
     )
@@ -789,7 +785,7 @@ def main():
     if args.local_rank not in [-1, 0]:
         torch.distributed.barrier()  # Barrier to make sure only the first process in distributed training download model & vocab
 
-    config_class, model_class, tokenizer_class = BertConfig, BertForMaskedLM, BertTokenizer
+    config_class, model_class, tokenizer_class = RobertaConfig, RobertaForMaskedLM, RobertaTokenizerFast
 
     if args.config_name:
         config = config_class.from_pretrained(args.config_name, cache_dir=args.cache_dir)
@@ -813,10 +809,10 @@ def main():
     modeling.SEP_ID = tokenizer.sep_token_id
 
     if args.block_size <= 0:
-        args.block_size = tokenizer.max_len
+        args.block_size = tokenizer.model_max_length
         # Our input block size will be the max possible for the model
     else:
-        args.block_size = min(args.block_size, tokenizer.max_len)
+        args.block_size = min(args.block_size, tokenizer.model_max_length)
 
     if args.model_name_or_path:
         model = model_class.from_pretrained(
@@ -885,4 +881,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

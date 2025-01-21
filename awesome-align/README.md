@@ -20,9 +20,9 @@ Inputs should be *tokenized* and each line is a source language sentence and its
 Here is an example of extracting word alignments from multilingual BERT:
 
 ```bash
-DATA_FILE=/path/to/data/file
+DATA_FILE=Data/CPP-Cuda/tree_sitter_tokenized_leaf.txt
 MODEL_NAME_OR_PATH=bert-base-multilingual-cased
-OUTPUT_FILE=/path/to/output/file
+OUTPUT_FILE=Data/CPP-Cuda/forward.align
 
 CUDA_VISIBLE_DEVICES=0 awesome-align \
     --output_file=$OUTPUT_FILE \
@@ -51,7 +51,7 @@ OUTPUT_DIR=awesome-align/output_model
 
 CUDA_VISIBLE_DEVICES=0 awesome-train \
     --output_dir=$OUTPUT_DIR \
-    --model_name_or_path=bert-base-multilingual-cased \
+    --model_name_or_path=microsoft/codebert-base \
     --extraction 'softmax' \
     --do_train \
     --train_tlm \
