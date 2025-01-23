@@ -1,7 +1,0 @@
-tokenizers>=0.5.2
-torch>=1.2.0
-tqdm
-numpy
-boto3
-filelock
-requests

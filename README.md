@@ -44,24 +44,15 @@ Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to tokenize l
 
 #### Using awesome-align
 
-Install awesome-align:
-
-```bash
-cd awesome-align
-pip install -r requirements.txt
-python setup.py install
-cd ..
-```
-
 Run awesome-align:
 
 ```bash
 awesome-align \
-  --model_name_or_path microsoft/codebert-base \
+  --model_name_or_path bert-base-multilingual-cased \
   --data_file Data/CPP-Cuda/tree_sitter_tokenized_leaf.txt \
   --output_file Data/CPP-Cuda/forward.align \
   --extraction softmax \
-  --max_length 512
+  --batch_size 32
 ```
 
 Note: Change the Data/CPP-Cuda/cpp-cuda.txt to the corpus you want to make alignment like Data/Java-CS/java-cs.txt
