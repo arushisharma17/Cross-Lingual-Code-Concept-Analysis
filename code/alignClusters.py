@@ -2,6 +2,8 @@ import sys
 import json
 import os
 from collections import defaultdict
+import numpy as np
+from scipy import stats
 
 # Check if the correct number of command line arguments is provided
 if len(sys.argv) != 8:
@@ -91,6 +93,78 @@ update_clusters(cluster_file_path2, clusters2)
 aligned_clusters = defaultdict(set)
 alignment_metrics = defaultdict(dict)  # New dict to store metrics
 
+def calculate_calign(source_cluster, target_cluster, dictionary, theta_A=0.8):
+    """Calculate exact token alignment score between source and target clusters"""
+    aligned_types = 0
+    total_words = len(source_cluster)
+    
+    # Count exact token matches through dictionary
+    for source_word in source_cluster:
+        if source_word in dictionary:
+            # Get top translation (most probable match)
+            translations = sorted(dictionary[source_word], key=lambda x: x[1], reverse=True)[:1]
+            for target_word, prob in translations:
+                if target_word in target_cluster:
+                    aligned_types += 1
+                    break
+    
+    # Calculate accuracy of exact matches
+    accuracy = aligned_types / total_words if total_words > 0 else 0
+    return accuracy
+
+def calculate_colap(source_cluster, target_cluster, dictionary, theta_O=0.3):
+    """Calculate cluster overlap score using Pearson and Spearman correlation"""
+    # Create vectors for correlation calculation
+    source_vec = []
+    target_vec = []
+    
+    # Build translation probability vectors
+    for source_word in source_cluster:
+        for target_word in target_cluster:
+            source_prob = max([t[1] for t in dictionary.get(source_word, []) if t[0] == target_word], default=0)
+            target_prob = max([t[1] for t in dictionary.get(target_word, []) if t[0] == source_word], default=0)
+            source_vec.append(source_prob)
+            target_vec.append(target_prob)
+    
+    # Handle edge cases
+    if not source_vec or not target_vec:
+        return 0.0
+    
+    if len(source_vec) < 2:
+        return 0.0
+        
+    # Check if vectors are constant
+    if len(set(source_vec)) == 1 or len(set(target_vec)) == 1:
+        # If one vector is all zeros and other has values, return 0
+        # If both vectors are constant and equal, return 1
+        # If both vectors are constant but different, return 0
+        if all(v == 0 for v in source_vec) or all(v == 0 for v in target_vec):
+            return 0.0
+        elif source_vec[0] == target_vec[0]:
+            return 1.0
+        else:
+            return 0.0
+    
+    try:
+        # Calculate Pearson correlation
+        pearson_corr, _ = stats.pearsonr(source_vec, target_vec)
+        
+        # Calculate Spearman correlation
+        spearman_corr, _ = stats.spearmanr(source_vec, target_vec)
+        
+        # Average of both correlations (handling NaN values)
+        pearson_score = 0.0 if np.isnan(pearson_corr) else pearson_corr
+        spearman_score = 0.0 if np.isnan(spearman_corr) else spearman_corr
+        
+        # Normalize to [0,1] range since correlations are in [-1,1]
+        pearson_score = (pearson_score + 1) / 2
+        spearman_score = (spearman_score + 1) / 2
+        
+        return (pearson_score + spearman_score) / 2
+        
+    except (ValueError, TypeError):
+        return 0.0
+
 for source_cluster_number in clusters1:
     source_words = clusters1[source_cluster_number]
     for target_cluster_number in clusters2:
@@ -98,6 +172,10 @@ for source_cluster_number in clusters1:
         aligned_word_count = 0
         total_words_in_source_cluster = len(source_words)
         match_list = []
+        
+        # Use the proper calculation functions
+        calign_score = calculate_calign(source_words, target_words, dictionary)
+        colap_score = calculate_colap(source_words, target_words, dictionary)
         
         for source_word in source_words:
             if source_word in dictionary:
@@ -121,7 +199,9 @@ for source_cluster_number in clusters1:
                     "aligned_word_count": aligned_word_count,
                     "total_words": total_words_in_source_cluster,
                     "size_threshold": size_threshold,
-                    "translation_threshold": 0.5
+                    "translation_threshold": 0.5,
+                    "calign_score": calign_score,
+                    "colap_score": colap_score
                 }
             alignment_metrics[source_cluster_number]["target_cluster_sizes"].append(len(target_words))
 
