@@ -9,10 +9,6 @@ Can also be invoked as a script as follows:
     ``python -m neurox.data.extraction.transformers_extractor``
 """
 
-import os
-os.environ['HF_HOME'] = './cache'
-
-
 import argparse
 import sys
 import os
@@ -24,33 +20,24 @@ import torch
 from neurox.data.writer import ActivationsWriter
 
 from tqdm import tqdm
-from transformers import EncoderDecoderModel, AutoTokenizer
+from transformers import AutoModel, AutoTokenizer
 from transformers import RobertaTokenizer, T5ForConditionalGeneration
 
 
-from transformers import (
-    AutoModel,
-    AutoModelForSeq2SeqLM,
-    AutoTokenizer,
-    RobertaTokenizer,
-    EncoderDecoderModel,
-    AutoConfig
-)
-
-def get_model_and_tokenizer(model_desc, device="cuda", random_weights=False):
+def get_model_and_tokenizer(model_desc, device="cpu", random_weights=False):
     """
-    Automatically get the appropriate transformers model and tokenizer
-    based on the model description.
+    Automatically get the appropriate ``transformers`` model and tokenizer based
+    on the model description
 
     Parameters
     ----------
     model_desc : str
-        Model description; can either be a model name like 'bert-base-uncased',
-        a comma-separated list indicating <model>,<tokenizer>,
-        or a path to a trained model.
+        Model description; can either be a model name like ``bert-base-uncased``,
+        a comma separated list indicating <model>,<tokenizer> (since 1.0.8),
+        or a path to a trained model
 
     device : str, optional
-        Device to load the model on, 'cpu' or 'cuda'. Default is 'cuda'.
+        Device to load the model on, cpu or gpu. Default is cpu.
 
     random_weights : bool, optional
         Whether the weights of the model should be randomized. Useful for analyses
@@ -59,55 +46,45 @@ def get_model_and_tokenizer(model_desc, device="cuda", random_weights=False):
     Returns
     -------
     model : transformers model
-        An instance of one of the transformers modeling classes.
+        An instance of one of the transformers.modeling classes
     tokenizer : transformers tokenizer
-        An instance of one of the transformers tokenization classes.
+        An instance of one of the transformers.tokenization classes
     """
 
-    model_desc_parts = model_desc.split(",")
-    model_name = model_desc_parts[0]
-    tokenizer_name = model_desc_parts[1] if len(model_desc_parts) > 1 else model_name
-
-    # Determine the model class to use
-    if len(model_desc_parts) == 3:
-        model_class_name = model_desc_parts[2]
-        model_class = getattr(transformers, model_class_name)
-    else:
-        # Use AutoModelForSeq2SeqLM for encoder-decoder models like T5
-        try:
-            config = AutoConfig.from_pretrained(model_name)
-            if config.is_encoder_decoder:
-                model_class = AutoModelForSeq2SeqLM
-            else:
-                model_class = AutoModel
-        except Exception as e:
-            print(f"Error loading config for {model_name}: {e}")
-            return None, None
-
-    # Load the model
-    try:
-        model = model_class.from_pretrained(model_name, output_hidden_states=True).to(device)
-    except Exception as e:
-        print(f"Error loading model {model_name}: {e}")
-        return None, None
-
-    # Load the tokenizer
-    try:
+    # NOTE: Contains a really shitty patch
+    model_desc = model_desc.split(",")
+    if len(model_desc) == 1:
+        model_name = model_desc[0]
+        tokenizer_name = model_desc[0]
+        model = AutoModel.from_pretrained(model_name, output_hidden_states=True).to(device)
         if model_name == 'Salesforce/codet5-base':
             tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
         else:
             tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    except Exception as e:
-        print(f"Error loading tokenizer {tokenizer_name}: {e}")
-        return None, None
+    elif len(model_desc) == 3:
+        model_name = model_desc[0]
+        tokenizer_name = model_desc[1]
+        model_class_name = model_desc[2]
+        model_class=getattr(transformers, model_class_name)
+        model = model_class.from_pretrained(model_name, output_hidden_states=True).to(device)
+        if model_name == 'Salesforce/codet5-base':
+            tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    else:
+        model_name = model_desc[0]
+        tokenizer_name = model_desc[1]
+        model = AutoModel.from_pretrained(model_name, output_hidden_states=True).to(device)
+        if model_name == 'Salesforce/codet5-base':
+            tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
 
-    # Randomize weights if specified
     if random_weights:
         print("Randomizing weights")
         model.init_weights()
 
     return model, tokenizer
-
 
 
 def aggregate_repr(state, start, end, aggregation):
@@ -167,7 +144,7 @@ def extract_sentence_representations(
     sentence_pair,
     model,
     tokenizer,
-    device="cuda",
+    device="cpu",
     include_embeddings=True,
     aggregation="last",
     dtype="float32",
@@ -290,7 +267,7 @@ def extract_sentence_representations(
         for key in all_keys:
             for token_idx, token in enumerate(all_tmp_tokens[key]):
                 tok_ids = [
-                    x for x in tokenizer.encode(token, truncation=True, max_length=8192) if x not in special_tokens_ids
+                    x for x in tokenizer.encode(token) if x not in special_tokens_ids
                 ]
                 # Ignore the added letter tokens
                 if token_idx != 0 and token_idx != len(all_tmp_tokens[key]) - 1:
@@ -314,23 +291,42 @@ def extract_sentence_representations(
         # Tuple has 13 elements for base model: embedding outputs + hidden states at each layer
         hidden_states = {}
         if seq2seq_component == "encoder":
-            all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=True, max_length=8192)
+            all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=True)
             encoder_input_ids = torch.tensor([all_ids["encoder"]]).to(device)
             model_outputs = model(encoder_input_ids)  # No 'labels' argument
         
         elif seq2seq_component == "decoder" or seq2seq_component == "both":
-            all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=True, max_length=8192)
+            all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=True)
             encoder_input_ids = torch.tensor([all_ids["encoder"]]).to(device)
-            
-            all_ids["decoder"] = tokenizer.encode(decoder_sentence, truncation=True, max_length=8192)
+            all_ids["decoder"] = tokenizer.encode(decoder_sentence, truncation=True)
             decoder_input_ids = torch.tensor([all_ids["decoder"]]).to(device)
-            
             model_outputs = model(
                 encoder_input_ids,
-                decoder_input_ids=decoder_input_ids,  
-                output_hidden_states=True,
+                decoder_input_ids=decoder_input_ids,  # Ensure to pass decoder_input_ids
             )
+        # if seq2seq_component == "encoder":
+        #     all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=True)
+        #     encoder_input_ids = torch.tensor([all_ids["encoder"]]).to(device)
 
+        #     all_ids["decoder"] = tokenizer.encode("", truncation=True)
+        #     decoder_input_ids = torch.tensor([all_ids["decoder"]]).to(device)
+        #     model_outputs = model(
+        #         encoder_input_ids,
+        #         labels=decoder_input_ids,
+        #     )
+        #     hidden_states["encoder"] = model_outputs.encoder_hidden_states
+        # elif seq2seq_component == "decoder" or seq2seq_component == "both":
+        #     all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=True)
+        #     encoder_input_ids = torch.tensor([all_ids["encoder"]]).to(device)
+
+        #     all_ids["decoder"] = tokenizer.encode(decoder_sentence, truncation=True)
+        #     decoder_input_ids = torch.tensor([all_ids["decoder"]]).to(device)
+        #     print('+'*80)
+        #     print(seq2seq_component
+        #     model_outputs = model(
+        #         encoder_input_ids,
+        #         labels=decoder_input_ids,
+        #     ))
             if seq2seq_component == "both":
                 hidden_states["encoder"] = model_outputs.encoder_hidden_states
             hidden_states["decoder"] = model_outputs.decoder_hidden_states
@@ -548,7 +544,7 @@ def extract_representations(
     encoder_input_corpus,
     decoder_input_corpus,
     output_file,
-    device="cuda",
+    device="cpu",
     aggregation="last",
     output_type="json",
     random_weights=False,
