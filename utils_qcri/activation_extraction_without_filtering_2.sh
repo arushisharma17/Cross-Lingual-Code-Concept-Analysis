@@ -135,14 +135,27 @@ python "${scriptDir}/frequency_count.py" \
     --output-file "${decoder_working_file}.words_freq"
 
 # Extract layer activations
-PYTHONPATH="$NEUROX_PATH" python3 -u NeuroX/neurox/data/extraction/transformers_extractor.py \
-    "${model}" \
-    "$encoder_working_file" "$decoder_working_file" \
-    "${outputDir}/activations.json" \
-    --output_type json \
-    --seq2seq_component both \
-    --decompose_layers \
-    --filter_layers "$layer"
+if [[ $model == *"coderosetta"* ]] || [[ $model == *"CodeRosetta"* ]]; then
+    echo "Calling transformers_extractor_coderosetta.py for model: $model"
+    PYTHONPATH="$NEUROX_PATH" python3 -u NeuroX/neurox/data/extraction/transformers_extractor_coderosetta.py \
+        "${model}" \
+        "$encoder_working_file" "$decoder_working_file" \
+        "${outputDir}/activations.json" \
+        --output_type json \
+        --seq2seq_component both \
+        --decompose_layers \
+        --filter_layers "$layer"
+else
+    echo "Calling transformers_extractor.py for model: $model"
+    PYTHONPATH="$NEUROX_PATH" python3 -u NeuroX/neurox/data/extraction/transformers_extractor.py \
+        "${model}" \
+        "$encoder_working_file" "$decoder_working_file" \
+        "${outputDir}/activations.json" \
+        --output_type json \
+        --seq2seq_component both \
+        --decompose_layers \
+        --filter_layers "$layer"
+fi
 
 # Create dataset file
 python "${scriptDir}/create_data_single_layer.py" \
