@@ -208,10 +208,9 @@ scancel <job_id>
 ```
 # GPU Resources on Nova Cluster
 
-## Overview
-* Total GPUs available: 161
-
-## Detailed Comparison
+## Note
+More resources does not necessarily mean faster runtime, if you request for too much resources system might fail to allocate you the requested resources or put your job on hold for long time. Below memory limits may not be accurate, experiment to find the best amount needed for your job, start from lowest possible, then work your way up as you need more memory.
+## Comparison
 
 | GPU Model | Count | Type | Best For | Key Features |
 |-----------|--------|------|-----------|--------------|
@@ -221,19 +220,6 @@ scancel <job_id>
 | A40 | 4 | Professional | Viz & Compute | - 48GB memory<br>- Professional visualization<br>- Good compute capabilities |
 | RTX 6000 | 20 | Workstation | Mixed Workloads | - 24GB memory<br>- Balance of graphics/compute<br>- Professional graphics |
 | V100 | 5 | Data Center | Legacy AI | - Older architecture<br>- 1st gen tensor cores<br>- 16/32GB memory options |
-
-## Recommendations
-
-### Best for Deep Learning/AI:
-1. **A100** (92 available)
-  - Most numerous
-  - Best performance
-  - Latest architecture
-
-### Best for Mixed Workloads:
-1. **L40S** (8 available)
-  - Latest architecture
-  - Good balance of features
 
 ### Best Availability:
 1. A100 (112 total including PCIe)
