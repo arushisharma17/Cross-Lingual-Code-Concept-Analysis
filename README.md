@@ -193,3 +193,51 @@ streamlit run Visualize/app.py --model-dir Experiments/Salesforce_codet5-base/Da
 
 Note: Change the model-dir to the directory you want to visualize clusters for like Experiments/Salesforce_codet5-base/Data_CPP-Cuda. Chnage the sentence-file to the corpus you want to visualize like Data/CPP-Cuda/input.in, Data/CPP-Cuda/label.out
 
+# Running pipeline on nova
+### Submitting a job via slurm manager
+```
+sbatch <filename>
+```
+### Checking running jobs via slurm
+```
+squeue --me
+```
+### Canceling a job via slurm
+```
+scancel <job_id>
+```
+# GPU Resources on Nova Cluster
+
+## Overview
+* Total GPUs available: 161
+
+## Detailed Comparison
+
+| GPU Model | Count | Type | Best For | Key Features |
+|-----------|--------|------|-----------|--------------|
+| A100 | 92 | Data Center | Deep Learning, AI | - Latest architecture<br>- Highest memory bandwidth<br>- 3rd gen tensor cores<br>- Up to 80GB memory |
+| A100-PCIe | 20 | Data Center | Deep Learning, AI | - PCIe interface<br>- Slightly lower bandwidth<br>- 40GB memory<br>- More common in standard servers |
+| L40S | 8 | Professional | AI & Graphics | - Ada Lovelace architecture<br>- Latest generation<br>- Good for mixed workloads |
+| A40 | 4 | Professional | Viz & Compute | - 48GB memory<br>- Professional visualization<br>- Good compute capabilities |
+| RTX 6000 | 20 | Workstation | Mixed Workloads | - 24GB memory<br>- Balance of graphics/compute<br>- Professional graphics |
+| V100 | 5 | Data Center | Legacy AI | - Older architecture<br>- 1st gen tensor cores<br>- 16/32GB memory options |
+
+## Recommendations
+
+### Best for Deep Learning/AI:
+1. **A100** (92 available)
+  - Most numerous
+  - Best performance
+  - Latest architecture
+
+### Best for Mixed Workloads:
+1. **L40S** (8 available)
+  - Latest architecture
+  - Good balance of features
+
+### Best Availability:
+1. A100 (112 total including PCIe)
+2. RTX 6000 (20)
+3. L40S (8)
+4. V100 (5)
+5. A40 (4)
