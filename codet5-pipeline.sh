@@ -4,6 +4,7 @@
 #SBATCH --nodes=1   
 #SBATCH --ntasks-per-node=18   
 #SBATCH --mem=64G   
+#SBATCH --gres=gpu:a100:1
 #SBATCH --partition=nova    
 #SBATCH --job-name="preprocessing-test"
 #SBATCH --mail-user=owenk@iastate.edu   
