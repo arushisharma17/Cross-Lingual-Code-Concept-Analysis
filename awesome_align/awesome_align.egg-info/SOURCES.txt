@@ -9,6 +9,7 @@ awesome_align/file_utils.py
 awesome_align/modeling.py
 awesome_align/modeling_utils.py
 awesome_align/run_align.py
+awesome_align/run_align_coderosetta_encoder_decoder.py
 awesome_align/run_align_codet5.py
 awesome_align/run_train.py
 awesome_align/sparsemax.py

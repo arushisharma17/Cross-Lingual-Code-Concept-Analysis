@@ -1,2 +1,3 @@
 [console_scripts]
+awesome-align-coderosetta-encoder-decoder = awesome_align.run_align_coderosetta_encoder_decoder:main
 awesome-align-codet5 = awesome_align.run_align_codet5:main
