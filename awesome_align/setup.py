@@ -27,6 +27,7 @@ setup(
         "console_scripts": [
             "awesome-align-codet5=awesome_align.run_align_codet5:main",
             "awesome-align-coderosetta-encoder-decoder=awesome_align.run_align_coderosetta_encoder_decoder:main",
+            "awesome-align=awesome_align.run_align:main"
         ],
 
     },
