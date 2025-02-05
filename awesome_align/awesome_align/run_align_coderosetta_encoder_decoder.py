@@ -28,7 +28,7 @@ import torch
 from tqdm import trange
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, IterableDataset
-from transformers import AutoTokenizer, T5ForConditionalGeneration
+from transformers import AutoTokenizer, EncoderDecoderModel
 
 
 def set_seed(args):
@@ -164,7 +164,7 @@ def merge_files(writers):
     return
 
 
-def word_align(args, model: T5ForConditionalGeneration, tokenizer: AutoTokenizer):
+def word_align(args, model: EncoderDecoderModel, tokenizer: AutoTokenizer):
     def collate(examples):
         worker_ids, ids_src, ids_tgt, bpe2word_map_src, bpe2word_map_tgt, sents_src, sents_tgt = zip(*examples)
         ids_src = pad_sequence(ids_src, batch_first=True, padding_value=tokenizer.pad_token_id)
@@ -279,8 +279,8 @@ def main():
     set_seed(args)
 
     if args.model_name_or_path:
-        tokenizer = AutoTokenizer.from_pretrained("Salesforce/codet5-base")
-        model = T5ForConditionalGeneration.from_pretrained(args.model_name_or_path)
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
+        model = EncoderDecoderModel.from_pretrained(args.model_name_or_path)
     else:
         raise ValueError(
             "You must specify a CodeRosetta model path using --model_name_or_path"
@@ -290,8 +290,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 def get_cross_attention_alignments(model, input_ids, attention_mask, decoder_input_ids, decoder_attention_mask, align_layer=-1):
-    """Get cross-attention alignments from T5 model"""
+    """Get cross-attention alignments from Encoder-Decoder model"""
     outputs = model(
         input_ids=input_ids,
         attention_mask=attention_mask,
@@ -300,7 +301,7 @@ def get_cross_attention_alignments(model, input_ids, attention_mask, decoder_inp
         output_attentions=True,
     )
     
-    # Get cross-attention matrices from T5 outputs
+    # Get cross-attention matrices from encoder-decoder outputs
     cross_attentions = outputs.cross_attentions
     if align_layer < 0:
         align_layer = len(cross_attentions) + align_layer
@@ -310,8 +311,11 @@ def get_cross_attention_alignments(model, input_ids, attention_mask, decoder_inp
     return attention_matrix
 
 def shift_tokens_right(input_ids, pad_token_id, decoder_start_token_id):
-    """Shift decoder input ids right for T5."""
-    # T5 handles this internally, but keeping function for compatibility
+    """Shift decoder input ids right"""
+    # If decoder_start_token_id is None, use bos_token_id (0) as default
+    if decoder_start_token_id is None:
+        decoder_start_token_id = 0  # Default BOS token ID from config
+        
     shifted_input_ids = input_ids.new_zeros(input_ids.shape)
     shifted_input_ids[..., 1:] = input_ids[..., :-1].clone()
     shifted_input_ids[..., 0] = decoder_start_token_id
@@ -320,20 +324,20 @@ def shift_tokens_right(input_ids, pad_token_id, decoder_start_token_id):
 
 def get_aligned_word(self, ids_src, ids_tgt, bpe2word_map_src, bpe2word_map_tgt, device, 
                     align_layer=-1, extraction='softmax', softmax_threshold=0.001, test=False, output_prob=False):
-    """Get word alignments using T5 cross-attention"""
+    """Get word alignments using encoder-decoder cross-attention"""
     batch_size = ids_src.size(0)
     results = []
     
     for idx in range(batch_size):
         src_ids = ids_src[idx:idx+1].to(device)
         tgt_ids = ids_tgt[idx:idx+1].to(device)
-        src_mask = (src_ids != self.config.pad_token_id).float()
-        tgt_mask = (tgt_ids != self.config.pad_token_id).float()
+        src_mask = (src_ids != self.config.encoder.pad_token_id).float()
+        tgt_mask = (tgt_ids != self.config.decoder.pad_token_id).float()
         
         # Generate decoder inputs
         decoder_input_ids = shift_tokens_right(
             tgt_ids,
-            self.config.pad_token_id,
+            self.config.decoder.pad_token_id,
             self.config.decoder_start_token_id
         )
         
@@ -382,6 +386,6 @@ def get_aligned_word(self, ids_src, ids_tgt, bpe2word_map_src, bpe2word_map_tgt,
     
     return results
 
-# Add the method to T5ForConditionalGeneration instead of EncoderDecoderModel
-T5ForConditionalGeneration.get_aligned_word = get_aligned_word
+# Add the methods to EncoderDecoderModel
+EncoderDecoderModel.get_aligned_word = get_aligned_word
 
