@@ -1,0 +1,17 @@
+transformers==4.46.3 
+torch==2.4.1 
+tokenizers==0.20.3 
+charset-normalizer==2.0.12 
+boto3==1.36.9 
+botocore==1.36.9 
+filelock==3.6.0 
+fsspec==2024.12.0 
+huggingface-hub==0.28.0 
+idna==3.3 
+numpy==1.19.5 
+packaging==24.1 
+regex==2022.3.15 
+tqdm==4.61.0 
+urllib3==1.25.4 
+python-dateutil==2.8.2 
+six==1.16.0
