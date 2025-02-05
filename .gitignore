@@ -13,3 +13,8 @@ LLM_labelling/t5/
 *.env
 venv/
 Models/
+*.json
+*.jsonl
+*.jsonl.gz
+*.jsonl.gz.part
+*.mapping_dict.json
