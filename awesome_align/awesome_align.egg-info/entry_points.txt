@@ -1,0 +1,2 @@
+[console_scripts]
+awesome-align-codet5 = awesome_align.run_align_codet5:main
