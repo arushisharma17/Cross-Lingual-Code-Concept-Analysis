@@ -9,8 +9,7 @@ Write up forthcoming. In the mean time -- read `Full Demo.ipynb` for details.
 ```bash
 conda env create -f environment.yml
 conda activate neurox_pip
-pip install --upgrade torch==2.0.0
-pip install --upgrade transformers==4.30.0
+pip install -r req.txt
 ```
 
 Install Rust:
