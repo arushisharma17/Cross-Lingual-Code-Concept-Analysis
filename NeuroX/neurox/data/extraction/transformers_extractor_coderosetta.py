@@ -20,9 +20,15 @@ import torch
 from neurox.data.writer import ActivationsWriter
 
 from tqdm import tqdm
-from transformers import AutoModel, AutoTokenizer
+from transformers import AutoModel, RobertaTokenizerFast, RobertaTokenizer
 from transformers import  EncoderDecoderModel, GenerationConfig
 
+# Clear CPU cache
+torch.cuda.empty_cache()  # Clear GPU cache
+
+# If you want to clear the CPU memory as well, you can use:
+import gc
+gc.collect()  # Collect garbage to free up CPU memory
 
 def get_model_and_tokenizer(model_desc, device="cpu", random_weights=False):
     """
@@ -59,29 +65,30 @@ def get_model_and_tokenizer(model_desc, device="cpu", random_weights=False):
         if model_name.startswith('coderosetta') or 'CodeRosetta' in model_name:
             # Load encoder and decoder components from HuggingFace
             model = EncoderDecoderModel.from_pretrained(model_name).to(device)
-            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+            tokenizer = RobertaTokenizer.from_pretrained(tokenizer_name)
             
             # Set required model config parameters
             model.config.add_cross_attention = True
-            model.config.pad_token_id = tokenizer.pad_token_id
-            model.config.eos_token_id = tokenizer.eos_token_id
+            model.config.pad_token_id = 1  # Set according to your config
+            model.config.eos_token_id = 2  # Set according to your config
+            model.config.bos_token_id = 0  # Set according to your config
             model.config.output_hidden_states = True  # Enable hidden states output
+            
+            # Ensure both encoder and decoder output hidden states
+            model.encoder.config.output_hidden_states = True  # Set according to your config
+            model.decoder.config.output_hidden_states = True  # Set according to your config
             
             # Set generation config
             model.generation_config = GenerationConfig(
-                max_new_tokens=512,  # Adjust as needed
-                pad_token_id=tokenizer.pad_token_id,
-                bos_token_id=tokenizer.bos_token_id,
-                eos_token_id=tokenizer.eos_token_id,
+                max_new_tokens=1024,  # Set according to your config
+                pad_token_id=1,
+                bos_token_id=0,
+                eos_token_id=2,
                 output_hidden_states=True
             )
-            
-            # Ensure both encoder and decoder output hidden states
-            model.encoder.config.output_hidden_states = True
-            model.decoder.config.output_hidden_states = True
         else:
-            model = AutoModel.from_pretrained(model_name, output_hidden_states=True).to(device)
-            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+            model = EncoderDecoderModel.from_pretrained(model_name, output_hidden_states=True).to(device)
+            tokenizer = RobertaTokenizer.from_pretrained(tokenizer_name)
         
         if random_weights:
             print("Randomizing weights")
@@ -297,18 +304,17 @@ def extract_sentence_representations(
                     tokenization_counts[token] = len(tok_ids)
 
         # Hugging Face format: tuple of torch.FloatTensor of shape (batch_size, sequence_length, hidden_size)
-        # Tuple has 13 elements for base model: embedding outputs + hidden states at each layer
         hidden_states = {}
         if seq2seq_component == "encoder":
-            all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=True)
+            all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=False)
             encoder_input_ids = torch.tensor([all_ids["encoder"]]).to(device)
             outputs = model(encoder_input_ids, output_hidden_states=True)
-            hidden_states["encoder"] = outputs.encoder_hidden_states
+            hidden_states["encoder"] = outputs.encoder_hidden_states if hasattr(outputs, 'encoder_hidden_states') else outputs.hidden_states
         
         elif seq2seq_component == "decoder" or seq2seq_component == "both":
-            all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=True)
+            all_ids["encoder"] = tokenizer.encode(encoder_sentence, truncation=False)
             encoder_input_ids = torch.tensor([all_ids["encoder"]]).to(device)
-            all_ids["decoder"] = tokenizer.encode(decoder_sentence, truncation=True)
+            all_ids["decoder"] = tokenizer.encode(decoder_sentence, truncation=False)
             decoder_input_ids = torch.tensor([all_ids["decoder"]]).to(device)
             outputs = model(
                 encoder_input_ids,
@@ -338,19 +344,20 @@ def extract_sentence_representations(
             hidden_states[key] = np.array(hidden_states[key], dtype=dtype)
 
     for key in all_keys:
-        # print('(%s) Sentence         : "%s"' % (key, all_sentences[key]))
-        # print(
-        #     "(%s) Original    (%03d): %s"
-        #     % (key, len(all_original_tokens[key]), all_original_tokens[key])
-        # )
-        # print(
-        #     "(%s) Tokenized   (%03d): %s"
-        #     % (
-        #         key,
-        #         len(tokenizer.convert_ids_to_tokens(all_ids[key])),
-        #         tokenizer.convert_ids_to_tokens(all_ids[key]),
-        #     )
-        # )
+        # Uncomment and enhance print statements
+        print('\n=== Processing %s Component ===' % key.upper())
+        print('Original sentence  : "%s"' % all_sentences[key])
+        print(
+            "Original tokens   (%03d): %s"
+            % (len(all_original_tokens[key]), all_original_tokens[key])
+        )
+        print(
+            "Tokenized tokens  (%03d): %s"
+            % (
+                len(tokenizer.convert_ids_to_tokens(all_ids[key])),
+                tokenizer.convert_ids_to_tokens(all_ids[key]),
+            )
+        )
 
         assert key not in hidden_states or hidden_states[key].shape[1] == len(
             all_ids[key]
@@ -508,15 +515,20 @@ def extract_sentence_representations(
                     last_special_token_pointer += 1
                 counter += 1
 
-        # print(
-        #     "(%s) Detokenized (%03d): %s"
-        #     % (key, len(detokenized[key]), detokenized[key])
-        # )
-        # print("(%s) Counter: %d" % (key, counter))
+        # Enhance print statement for detokenized results
+        print(
+            "Detokenized tokens (%03d): %s"
+            % (len(detokenized[key]), detokenized[key])
+        )
+        print("Counter: %d" % counter)
+        print("=" * 80)
 
         if inputs_truncated:
             print(f"WARNING: Input truncated for key '{key}'.")
             print(f"Original length: {len(original_tokens)}; Truncated to: {all_hidden_states.shape[1]}")
+            print(f"Original tokens: {original_tokens}")
+            print(f"Truncated tokens: {segmented_tokens[:all_hidden_states.shape[1]]}")
+            print(f"Detokenized sentence: {detokenized[key]}")
         else:
             assert counter == len(filtered_ids)
             assert len(detokenized[key]) == len(original_tokens) + len(
@@ -533,7 +545,7 @@ def extract_representations(
     decoder_input_corpus,
     output_file,
     device="cpu",
-    aggregation="last",
+    aggregation="mean",
     output_type="json",
     random_weights=False,
     ignore_embeddings=False,

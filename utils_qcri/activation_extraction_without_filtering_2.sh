@@ -135,7 +135,7 @@ python "${scriptDir}/frequency_count.py" \
     --output-file "${decoder_working_file}.words_freq"
 
 # Extract layer activations
-if [[ $model == *"coderosetta"* ]] || [[ $model == *"CodeRosetta"* ]]; then
+if [[ $model == *"Coderosetta"* ]] || [[ $model == *"CodeRosetta"* ]]; then
     echo "Calling transformers_extractor_coderosetta.py for model: $model"
     PYTHONPATH="$NEUROX_PATH" python3 -u NeuroX/neurox/data/extraction/transformers_extractor_coderosetta.py \
         "${model}" \

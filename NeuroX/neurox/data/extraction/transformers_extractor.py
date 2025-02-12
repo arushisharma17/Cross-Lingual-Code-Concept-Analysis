@@ -349,19 +349,19 @@ def extract_sentence_representations(
             hidden_states[key] = np.array(hidden_states[key], dtype=dtype)
 
     for key in all_keys:
-        # print('(%s) Sentence         : "%s"' % (key, all_sentences[key]))
-        # print(
-        #     "(%s) Original    (%03d): %s"
-        #     % (key, len(all_original_tokens[key]), all_original_tokens[key])
-        # )
-        # print(
-        #     "(%s) Tokenized   (%03d): %s"
-        #     % (
-        #         key,
-        #         len(tokenizer.convert_ids_to_tokens(all_ids[key])),
-        #         tokenizer.convert_ids_to_tokens(all_ids[key]),
-        #     )
-        # )
+        print('(%s) Sentence         : "%s"' % (key, all_sentences[key]))
+        print(
+            "(%s) Original    (%03d): %s"
+            % (key, len(all_original_tokens[key]), all_original_tokens[key])
+        )
+        print(
+            "(%s) Tokenized   (%03d): %s"
+            % (
+                key,
+                len(tokenizer.convert_ids_to_tokens(all_ids[key])),
+                tokenizer.convert_ids_to_tokens(all_ids[key]),
+            )
+        )
 
         assert key not in hidden_states or hidden_states[key].shape[1] == len(
             all_ids[key]
@@ -396,13 +396,6 @@ def extract_sentence_representations(
             special_token_ids = []
 
         assert all_hidden_states.shape[1] == len(filtered_ids)
-        # print(
-        #     "Filtered   (%03d): %s"
-        #     % (
-        #         len(tokenizer.convert_ids_to_tokens(filtered_ids)),
-        #         tokenizer.convert_ids_to_tokens(filtered_ids),
-        #     )
-        # )
 
         # Get actual tokens for filtered ids in order to do subword
         #  aggregation
@@ -519,11 +512,11 @@ def extract_sentence_representations(
                     last_special_token_pointer += 1
                 counter += 1
 
-        # print(
-        #     "(%s) Detokenized (%03d): %s"
-        #     % (key, len(detokenized[key]), detokenized[key])
-        # )
-        # print("(%s) Counter: %d" % (key, counter))
+        print(
+            "(%s) Detokenized (%03d): %s"
+            % (key, len(detokenized[key]), detokenized[key])
+        )
+        print("(%s) Counter: %d" % (key, counter))
 
         if inputs_truncated:
             print(f"WARNING: Input truncated for key '{key}'.")
@@ -533,7 +526,7 @@ def extract_sentence_representations(
             assert len(detokenized[key]) == len(original_tokens) + len(
                 special_token_ids
             )
-    # print("===================================================================")
+    print("===================================================================")
 
     return final_hidden_states, detokenized
 
