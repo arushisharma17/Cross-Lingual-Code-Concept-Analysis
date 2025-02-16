@@ -89,7 +89,8 @@ decoder_input="label.out"
 NEUROX_PATH="NeuroX/scripts"
 
 datasetname=$(echo "$inputPath" | sed 's/[\/]/_/g')
-modelname=$(echo "$model" | sed 's/[\/]/_/g')
+modelname=$(basename "$model")
+echo "modelname: $modelname"
 outputDir="${customOutputDir:-Experiments/${modelname}/${datasetname}/layer${layer}/extraction_without_filtering}"
 
 # Create output directory and save configuration

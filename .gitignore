@@ -32,3 +32,4 @@ Models/
 *.jsonl.gz
 *.jsonl.gz.part
 *.mapping_dict.json
+git.token
