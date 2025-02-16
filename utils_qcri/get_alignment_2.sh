@@ -50,42 +50,43 @@ if [[ -z "$basePath" ]]; then
     usage
 fi
 
-if [[ -z "$layer" ]]; then
-    echo "Error: --layer is required."
-    usage
-fi
-
 if [[ -z "$dictionary_file_path" ]]; then
     echo "Error: --dictionary is required."
     usage
 fi
 
-# Construct the full input path with the layer number
-clusterDir="${basePath%/*}/layer${layer}/${basePath##*/}/clustering"
-
-# Find the encoder and decoder cluster files in the specified clusterDir
-encoder_cluster_file=$(find "$clusterDir" -type f -name "encoder-clusters-kmeans-*.txt" | head -n 1)
-decoder_cluster_file=$(find "$clusterDir" -type f -name "decoder-clusters-kmeans-*.txt" | head -n 1)
-
-if [[ -z "$encoder_cluster_file" || -z "$decoder_cluster_file" ]]; then
-    echo "Error: Could not find encoder or decoder cluster files in $clusterDir."
-    exit 1
-fi
-
-# Log detected files
-echo "Encoder cluster file: $encoder_cluster_file"
-echo "Decoder cluster file: $decoder_cluster_file"
-
-# Create the log file path
-log_file="$clusterDir/alignment_output.txt"
-
-# Run the Python alignment script
-python -u "code/alignClusters.py" \
-    "$encoder_cluster_file" \
-    "$decoder_cluster_file" \
-    "$dictionary_file_path" \
-    "$top_n_translations" \
-    "$matching_threshold" \
-    "$size_threshold" \
-    "$types" | tee "$log_file"
+# Remove the layer validation since we'll loop through all layers
+# Process each layer from 0 to 12
+for layer in {0..12}; do
+    echo "Processing layer $layer..."
+    
+    # Construct the full input path with the layer number
+    clusterDir="${basePath%/*}/layer${layer}/${basePath##*/}"
+    
+    # Find the encoder and decoder cluster files in the specified clusterDir
+    encoder_cluster_file=$(find "$clusterDir" -type f -name "encoder-clusters-kmeans-*.txt" | head -n 1)
+    decoder_cluster_file=$(find "$clusterDir" -type f -name "decoder-clusters-kmeans-*.txt" | head -n 1)
+    
+    if [[ -z "$encoder_cluster_file" || -z "$decoder_cluster_file" ]]; then
+        echo "Warning: Could not find encoder or decoder cluster files in $clusterDir. Skipping layer $layer."
+        continue
+    fi
+    
+    # Log detected files
+    echo "Encoder cluster file: $encoder_cluster_file"
+    echo "Decoder cluster file: $decoder_cluster_file"
+    
+    # Create the log file path
+    log_file="$clusterDir/alignment_output.txt"
+    
+    # Run the Python alignment script
+    python -u "code/alignClusters.py" \
+        "$encoder_cluster_file" \
+        "$decoder_cluster_file" \
+        "$dictionary_file_path" \
+        "$top_n_translations" \
+        "$matching_threshold" \
+        "$size_threshold" \
+        "$types" | tee "$log_file"
+done
 
