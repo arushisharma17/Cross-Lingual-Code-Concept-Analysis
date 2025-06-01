@@ -16,36 +16,41 @@
 # Create logs directory
 mkdir -p logs
 
+model_name="Salesforce/codet5-base"
+layer=12
+short_model_name="${model_name#*/}"
+
+
 # Run preprocessing
 python code/preprocess.py --corpus-path Data/CPP-Cuda/cpp-cuda.txt --lang1 cpp --lang2 cuda
 
 # Run activation extraction
 ./utils_qcri/activation_extraction_without_filtering_2.sh \
-    --model Salesforce/codet5-base \
+    --model $model_name \
     --inputPath Data/CPP-Cuda \
-    --layer 0 \
+    --layer $layer \
     --sentence_length 512
 
 # Run clustering
 ./utils_qcri/clustering_2.sh \
-    --inputPath Experiments/Salesforce_codet5-base/Data_CPP-Cuda/extraction_without_filtering \
-    --layer 0 \
-    --clusters 500 \
+    --inputPath Experiments/$short_model_name/Data_CPP-Cuda/extraction_without_filtering \
+    --layer $layer \
+    --clusters 350 \
     --mode visualize
 
 # Extract embeddings and compute centroids
 python code/extract_embeddings.py \
-    --model_name microsoft/codebert-base \
+    --model_name $model_name \
     --corpus_path Data/CPP-Cuda/cpp-cuda.txt \
-    --cluster_file1 Experiments/Salesforce_codet5-base/Data_CPP-Cuda/extraction_without_filtering/layer0/encoder/clusters.txt \
-    --cluster_file2 Experiments/Salesforce_codet5-base/Data_CPP-Cuda/extraction_without_filtering/layer0/decoder/clusters.txt \
+    --cluster_file1 Experiments/$short_model_name/Data_CPP-Cuda/extraction_without_filtering/layer0/encoder/clusters.txt \
+    --cluster_file2 Experiments/$short_model_name/Data_CPP-Cuda/extraction_without_filtering/layer0/decoder/clusters.txt \
     --output_dir Data/CPP-Cuda \
-    --layer 12
+    --layer $layer
 
 # Run alignment with centroids
 python code/alignClusters.py \
-    Experiments/Salesforce_codet5-base/Data_CPP-Cuda/extraction_without_filtering/layer0/encoder/clusters.txt \
-    Experiments/Salesforce_codet5-base/Data_CPP-Cuda/extraction_without_filtering/layer0/decoder/clusters.txt \
+    Experiments/$short_model_name/Data_CPP-Cuda/extraction_without_filtering/layer0/encoder/clusters.txt \
+    Experiments/$short_model_name/Data_CPP-Cuda/extraction_without_filtering/layer0/decoder/clusters.txt \
     Data/CPP-Cuda/dictionary.json \
     5 0.3 0.5 10 \
     --centroid_similarities Data/CPP-Cuda/centroid_similarities.json
