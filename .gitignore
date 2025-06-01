@@ -33,3 +33,4 @@ Models/
 *.jsonl.gz.part
 *.mapping_dict.json
 git.token
+*.tar.gz
