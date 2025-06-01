@@ -1,0 +1,4 @@
+[console_scripts]
+awesome-align = awesome_align.run_align:main
+awesome-align-codebert = awesome_align.run_align_codebert:main
+awesome-train = awesome_align.run_train:main
