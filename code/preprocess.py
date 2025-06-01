@@ -32,8 +32,8 @@ def main():
 
     # 2. Run awesome-align
     run_command([
-        "awesome-align",
-        "--model_name_or_path", "bert-base-multilingual-cased",
+        "awesome-align-codebert",
+        "--model_name_or_path", "microsoft/codebert-base",
         "--data_file", f"{corpus_dir}/tree_sitter_tokenized_leaf.txt",
         "--output_file", f"{corpus_dir}/forward.align",
         "--extraction", "softmax",

@@ -55,6 +55,22 @@ if [[ -z "$dictionary_file_path" ]]; then
     usage
 fi
 
+# Dynamically find the neurox_pip environment path and construct Python path
+CONDA_ENV_PATH=$(conda env list | grep neurox_pip | awk '{print $2}')
+if [[ -z "$CONDA_ENV_PATH" ]]; then
+    echo "Error: Could not find neurox_pip environment"
+    exit 1
+fi
+
+PYTHON_PATH="${CONDA_ENV_PATH}/bin/python"
+echo "Using Python interpreter: $PYTHON_PATH"
+
+# Verify the Python interpreter exists
+if [ ! -f "$PYTHON_PATH" ]; then
+    echo "Error: Python interpreter not found at $PYTHON_PATH"
+    exit 1
+fi
+
 # Remove the layer validation since we'll loop through all layers
 # Process each layer from 0 to 12
 for layer in {0..12}; do
@@ -79,8 +95,8 @@ for layer in {0..12}; do
     # Create the log file path
     log_file="$clusterDir/alignment_output.txt"
     
-    # Run the Python alignment script
-    python -u "code/alignClusters.py" \
+    # Run the Python alignment script with explicit neurox_pip Python path
+    "$PYTHON_PATH" -u "code/alignClusters.py" \
         "$encoder_cluster_file" \
         "$decoder_cluster_file" \
         "$dictionary_file_path" \
@@ -89,4 +105,3 @@ for layer in {0..12}; do
         "$size_threshold" \
         "$types" | tee "$log_file"
 done
-

@@ -16,9 +16,6 @@
 # Create logs directory
 mkdir -p logs
 
-# Activate environment
-source /work/LAS/jannesar-lab/owenk/Cross-Lingual-Code-Concept-Analysis/miniconda3/bin/activate neurox_pip
-
 # Run preprocessing
 python code/preprocess.py --corpus-path Data/CPP-Cuda/cpp-cuda.txt --lang1 cpp --lang2 cuda
 
