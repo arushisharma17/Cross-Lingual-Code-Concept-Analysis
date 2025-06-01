@@ -37,7 +37,8 @@ def main():
         "--data_file", f"{corpus_dir}/tree_sitter_tokenized_leaf.txt",
         "--output_file", f"{corpus_dir}/forward.align",
         "--extraction", "softmax",
-        "--batch_size", "32"
+        "--batch_size", "32",
+        "--align_layer", "12"
     ], "Running awesome-align")
 
     # 3. Create translation dictionary

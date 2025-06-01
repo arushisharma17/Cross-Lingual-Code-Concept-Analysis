@@ -4,6 +4,7 @@ import os
 from collections import defaultdict
 import numpy as np
 from scipy import stats
+import argparse
 
 # Check if the correct number of command line arguments is provided
 if len(sys.argv) != 8:
@@ -19,6 +20,14 @@ top_n_target_phrases = int(sys.argv[4])
 match_percentage = float(sys.argv[5])
 size_threshold = float(sys.argv[6])
 no_types = float(sys.argv[7])
+
+# After parsing other command line arguments
+if len(sys.argv) > 8:
+    centroid_similarities_path = sys.argv[8]
+    with open(centroid_similarities_path, 'r') as f:
+        centroid_similarities = json.load(f)
+else:
+    centroid_similarities = {}
 
 # # Read and parse the dictionary file considering top N target phrases for each source phrase
 # dictionary = {}
@@ -188,7 +197,12 @@ for source_cluster_number in clusters1:
                         
         actual_match_percentage = aligned_word_count / total_words_in_source_cluster if total_words_in_source_cluster > 0 else 0
         
-        if actual_match_percentage > match_percentage and len(clusters1[source_cluster_number]) > no_types and len(clusters1[source_cluster_number])/len(clusters2[target_cluster_number]) > size_threshold:
+        centroid_sim = 0
+        if str(source_cluster_number) in centroid_similarities and str(target_cluster_number) in centroid_similarities[str(source_cluster_number)]:
+            centroid_sim = centroid_similarities[str(source_cluster_number)][str(target_cluster_number)]
+
+        combined_score = (0.4 * calign_score + 0.3 * colap_score + 0.3 * centroid_sim)
+        if combined_score > match_percentage and len(clusters1[source_cluster_number]) > no_types and len(clusters1[source_cluster_number])/len(clusters2[target_cluster_number]) > size_threshold:
             aligned_clusters[source_cluster_number].add(target_cluster_number)
             # Store metrics when we find a valid alignment
             if source_cluster_number not in alignment_metrics:

@@ -33,8 +33,19 @@ python code/preprocess.py --corpus-path Data/CPP-Cuda/cpp-cuda.txt --lang1 cpp -
     --clusters 500 \
     --mode visualize
 
-# Run alignment
-./utils_qcri/get_alignment_2.sh \
-    --inputPath Experiments/Salesforce_codet5-base/Data_CPP-Cuda/extraction_without_filtering \
-    --layer 0 \
-    --dictionary Data/CPP-Cuda/dictionary.json
+# Extract embeddings and compute centroids
+python code/extract_embeddings.py \
+    --model_name microsoft/codebert-base \
+    --corpus_path Data/CPP-Cuda/cpp-cuda.txt \
+    --cluster_file1 Experiments/Salesforce_codet5-base/Data_CPP-Cuda/extraction_without_filtering/layer0/encoder/clusters.txt \
+    --cluster_file2 Experiments/Salesforce_codet5-base/Data_CPP-Cuda/extraction_without_filtering/layer0/decoder/clusters.txt \
+    --output_dir Data/CPP-Cuda \
+    --layer 12
+
+# Run alignment with centroids
+python code/alignClusters.py \
+    Experiments/Salesforce_codet5-base/Data_CPP-Cuda/extraction_without_filtering/layer0/encoder/clusters.txt \
+    Experiments/Salesforce_codet5-base/Data_CPP-Cuda/extraction_without_filtering/layer0/decoder/clusters.txt \
+    Data/CPP-Cuda/dictionary.json \
+    5 0.3 0.5 10 \
+    --centroid_similarities Data/CPP-Cuda/centroid_similarities.json
